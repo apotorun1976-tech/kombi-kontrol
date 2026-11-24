@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kombi Kontrol">
+<meta name="theme-color" content="#050a14">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<title>Kombi Otomasyon</title>
+<style>
+  :root {
+    --bg: #050a14; --bg2: #0a1222;
+    --card: linear-gradient(160deg, rgba(19,31,56,0.92), rgba(9,16,31,0.95));
+    --border: rgba(59,130,246,0.22);
+    --border-hi: rgba(56,189,248,0.45);
+    --blue: #3b82f6; --cyan: #38bdf8; --orange: #f97316;
+    --green: #22c55e; --red: #ef4444; --txt: #f8fafc; --sub: #8fa3bf;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+  input[type=text], input[type=password] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; background: var(--bg); touch-action: manipulation; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(circle at 50% 0%, #0f1e3d 0%, var(--bg) 65%);
+    color: var(--txt); min-height: 100%;
+    padding: calc(env(safe-area-inset-top, 0px) + 4px) 10px calc(env(safe-area-inset-bottom, 0px) + 44px) 10px;
+    max-width: 430px; margin: 0 auto;
+    display: flex; flex-direction: column; justify-content: flex-start;
+  }
+  /* TOP BAR */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 2px 8px 2px; border-bottom: 1px solid rgba(56,189,248,0.18);
+    margin-bottom: 8px; flex-shrink: 0;
+  }
+  .menu-btn { background: none; border: none; color: #e2e8f0; cursor: pointer; padding: 4px; display: flex; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 6px; font-size: 1.12rem; font-weight: 800; letter-spacing: 0.2px; white-space: nowrap; }
+  .brand span { color: #3b82f6; }
+  .top-icons { display: flex; align-items: center; gap: 8px; }
+  .ic-ok { color: #22c55e; filter: drop-shadow(0 0 6px rgba(34,197,94,0.55)); }
+  .ic-off { color: #475569; }
+
+  /* HERO STATUS CARD */
+  .hero-card {
+    display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 9px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 15px; padding: 9px; margin-bottom: 8px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.45); flex-shrink: 0;
+  }
+  .boiler-box {
+    background: radial-gradient(circle at 50% 35%, #1d355e, #091326 85%);
+    border: 1px solid rgba(56,189,248,0.45); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; padding: 5px;
+    box-shadow: inset 0 0 14px rgba(56,189,248,0.2), 0 0 12px rgba(56,189,248,0.2);
+  }
+  .boiler-svg { width: 64px; height: 88px; filter: drop-shadow(0 6px 8px rgba(0,0,0,0.65)); }
+  .hero-right { display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+  .hero-status { display: flex; align-items: center; gap: 8px; padding-bottom: 7px; border-bottom: 1px solid rgba(148,163,184,0.14); }
+  .st-circle {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 30% 30%, #4ade80, #16a34a);
+    box-shadow: 0 0 14px rgba(34,197,94,0.6); color: #052e16;
+  }
+  .st-circle svg { width: 18px; height: 18px; }
+  .st-circle.off { background: radial-gradient(circle at 30% 30%, #94a3b8, #475569); box-shadow: none; color: #0f172a; }
+  .st-circle.err { background: radial-gradient(circle at 30% 30%, #f87171, #dc2626); box-shadow: 0 0 14px rgba(239,68,68,0.65); color: #fff; }
+  .st-title { font-size: 0.96rem; font-weight: 800; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st-sub { font-size: 0.7rem; color: var(--sub); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-top: 7px; text-align: center; }
+  .hm-item { position: relative; padding: 0 1px; min-width: 0; }
+  .hm-item:not(:last-child)::after { content: ""; position: absolute; right: 0; top: 15%; height: 70%; width: 1px; background: rgba(148,163,184,0.16); }
+  .hm-ic { height: 17px; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+  .hm-ic svg { width: 15px; height: 15px; }
+  .hm-lbl { font-size: 0.6rem; color: var(--sub); }
+  .hm-val { font-size: 0.74rem; font-weight: 800; margin-top: 1px; white-space: nowrap; }
+  .c-green { color: #4ade80; } .c-muted { color: #64748b; } .c-cyan { color: #38bdf8; }
+
+  /* DUAL CIRCULAR DIALS */
+  .dial-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; flex-shrink: 0; }
+  .dial-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 15px;
+    padding: 8px 4px 7px 4px; text-align: center; min-width: 0;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  }
+  .dial-head { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.72rem; font-weight: 700; color: #dbeafe; margin-bottom: 3px; white-space: nowrap; }
+  .dial-wrap { position: relative; display: flex; align-items: center; justify-content: center; height: 92px; width: 100%; }
+  .dial-svg { width: 96px; height: 86px; overflow: visible; }
+  .dial-val-box { position: absolute; top: 53%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
+  .dial-num { font-size: 1.42rem; font-weight: 900; letter-spacing: -0.5px; color: #fff; }
+  .dial-unit { font-size: 0.75rem; font-weight: 700; color: #cbd5e1; margin-left: 1px; }
+  .dial-live { font-size: 0.6rem; color: #38bdf8; margin-top: 1px; font-weight: 700; white-space: nowrap; }
+  .step-btn {
+    position: absolute; top: 52%; transform: translateY(-50%);
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid rgba(148,163,184,0.38);
+    background: radial-gradient(circle at 30% 30%, #1e293b, #0b1325);
+    color: #fff; font-size: 1.15rem; font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 5; transition: transform 0.1s, border-color 0.15s;
+  }
+  .step-btn:active { transform: translateY(-50%) scale(0.88); border-color: #38bdf8; background: #1d4ed8; }
+  .step-btn.minus { left: 3px; }
+  .step-btn.plus  { right: 3px; }
+  .dial-range { font-size: 0.66rem; color: var(--sub); margin-top: 1px; }
+
+  /* POWER CARD */
+  .power-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: linear-gradient(135deg, rgba(16,38,56,0.92), rgba(9,17,32,0.95));
+    border: 1px solid rgba(56,189,248,0.28); border-radius: 15px;
+    padding: 9px 12px; margin-bottom: 8px; cursor: pointer; flex-shrink: 0;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+  }
+  .power-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .pwr-ring {
+    width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+    border: 2px solid #4ade80; display: flex; align-items: center; justify-content: center;
+    color: #4ade80; box-shadow: 0 0 14px rgba(74,222,128,0.5), inset 0 0 8px rgba(74,222,128,0.28);
+    transition: 0.25s;
+  }
+  .pwr-ring svg { width: 20px; height: 20px; }
+  .pwr-ring.off { border-color: #64748b; color: #64748b; box-shadow: none; }
+  .pwr-title { font-size: 0.92rem; font-weight: 800; }
+  .pwr-sub { font-size: 0.67rem; color: var(--sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* SWITCH */
+  .sw { position: relative; width: 46px; height: 25px; flex-shrink: 0; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sw-track {
+    position: absolute; inset: 0; border-radius: 25px; background: #334155;
+    transition: 0.22s; cursor: pointer; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .sw-track::before {
+    content: ""; position: absolute; width: 19px; height: 19px; left: 2px; top: 2px;
+    border-radius: 50%; background: #fff; transition: 0.22s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.45);
+  }
+  .sw input:checked + .sw-track { background: linear-gradient(90deg, #16a34a, #22c55e); box-shadow: 0 0 10px rgba(34,197,94,0.45); }
+  .sw input:checked + .sw-track::before { transform: translateX(21px); }
+  .sw-sm { width: 38px; height: 22px; }
+  .sw-sm .sw-track::before { width: 16px; height: 16px; }
+  .sw-sm input:checked + .sw-track::before { transform: translateX(16px); }
+
+  /* 2x3 MENU GRID */
+  .menu-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 6px; flex-shrink: 0; }
+  .m-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 5px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 13px;
+    padding: 9px 9px; cursor: pointer; transition: 0.15s; min-width: 0;
+    box-shadow: 0 5px 14px rgba(0,0,0,0.3);
+  }
+  .m-card:active { transform: scale(0.97); border-color: var(--border-hi); }
+  .m-card.fault-active { border-color: rgba(239,68,68,0.65); background: linear-gradient(150deg, rgba(69,14,22,0.85), rgba(14,18,32,0.95)); }
+  .m-card.winter-act { border-color: #38bdf8; background: linear-gradient(150deg, rgba(14,58,110,0.88), rgba(10,19,36,0.95)); box-shadow: 0 0 12px rgba(56,189,248,0.28); }
+  .m-card.manual-act { border-color: #f59e0b; background: linear-gradient(150deg, rgba(120,62,12,0.85), rgba(10,19,36,0.95)); box-shadow: 0 0 12px rgba(245,158,11,0.28); }
+  .m-card.boost-act { border-color: #ef4444; background: linear-gradient(150deg, rgba(153,27,27,0.88), rgba(10,19,36,0.95)); box-shadow: 0 0 14px rgba(239,68,68,0.35); }
+  .m-card.summer-act { border-color: #fb923c; background: linear-gradient(150deg, rgba(110,48,14,0.85), rgba(10,19,36,0.95)); box-shadow: 0 0 12px rgba(249,115,22,0.28); }
+  .m-left { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+  .m-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .m-icon svg { width: 22px; height: 22px; }
+  .m-title { font-size: 0.76rem; font-weight: 800; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-sub { font-size: 0.63rem; color: var(--sub); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .m-code { font-size: 0.9rem; font-weight: 900; color: #ef4444; line-height: 1.05; }
+  .m-code.ok { color: #22c55e; font-size: 0.78rem; }
+  .chev { color: #64748b; font-size: 1rem; font-weight: 700; flex-shrink: 0; }
+  .dot-live { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; margin-right: 4px; }
+  .dot-live.off { background: #ef4444; box-shadow: none; }
+
+  /* FOOTER BAR */
+  .footer-bar {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: rgba(6,12,24,0.96); backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(56,189,248,0.18);
+    padding: 7px 12px calc(env(safe-area-inset-bottom, 0px) + 6px) 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 0.66rem; color: #94a3b8; z-index: 40;
+  }
+  .f-online { display: flex; align-items: center; color: #4ade80; font-weight: 700; white-space: nowrap; }
+
+  /* MODAL DRAWERS */
+  .modal-bg {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(2,6,14,0.88); z-index: 100;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 18px 10px 36px 10px;
+  }
+  .modal-bg.open { display: block; }
+  .modal-box {
+    width: 100%; max-width: 460px; margin: 0 auto; height: auto;
+    background: #0c1528; border: 1px solid rgba(56,189,248,0.35);
+    border-radius: 18px; padding: 16px 15px 22px 15px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+  }
+  @media (min-width: 680px) {
+    body {
+      max-width: 100%;
+      padding: calc(env(safe-area-inset-top, 0px) + 8px) 22px calc(env(safe-area-inset-bottom, 0px) + 46px) 22px;
+    }
+    .footer-bar { max-width: 100%; padding-left: 22px; padding-right: 22px; }
+    .modal-box { max-width: 720px; }
+  }
+  @media (min-width: 780px) and (orientation: landscape) {
+    body {
+      display: grid;
+      grid-template-columns: 1.08fr 1fr;
+      gap: 12px 16px;
+      align-content: start;
+    }
+    .topbar { grid-column: 1 / -1; margin-bottom: 0; }
+    .hero-card { grid-column: 1; margin-bottom: 0; }
+    .dial-grid { grid-column: 2; grid-row: 2 / span 2; margin-bottom: 0; align-self: stretch; }
+    .power-card { grid-column: 1; margin-bottom: 0; }
+    .menu-grid { grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  }
+  .modal-hd { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(148,163,184,0.15); }
+  .modal-hd h3 { font-size: 1.02rem; font-weight: 800; color: #f8fafc; }
+  .close-btn { background: #1e293b; border: none; color: #cbd5e1; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; }
+  .row-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(148,163,184,0.1); font-size: 0.86rem; }
+  .btn { padding: 10px 14px; border-radius: 10px; border: none; font-weight: 800; cursor: pointer; color: #fff; background: #2563eb; font-size: 0.84rem; }
+  .btn-ok { background: #16a34a; } .btn-red { background: #dc2626; } .btn-warn { background: #d97706; }
+  .mode-pills { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .mpill { padding: 10px 4px; border-radius: 10px; border: 1px solid #334155; background: #0f172a; color: #cbd5e1; font-weight: 800; font-size: 0.8rem; cursor: pointer; text-align: center; }
+  .mpill.act { background: #2563eb; border-color: #60a5fa; color: #fff; }
+  input[type=text], input[type=password], input[type=file] {
+    width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #334155;
+    background: #050a14; color: #fff; margin: 6px 0 12px 0; font-size: 0.88rem;
+  }
+  code { display: block; background: #040811; color: #4ade80; padding: 9px; border-radius: 8px; font-family: monospace; font-size: 0.74rem; word-break: break-all; margin-top: 6px; }
+  .wifi-item { display: flex; justify-content: space-between; padding: 9px 11px; background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; margin-bottom: 6px; cursor: pointer; font-size: 0.84rem; }
+
+  /* iPHONE TAKVIM STILI DOGALGAZ KARTI & MODAL */
+  .cal-entry {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: linear-gradient(145deg, rgba(24,38,68,0.95), rgba(11,19,36,0.96));
+    border: 1px solid rgba(251,191,36,0.38); border-radius: 14px;
+    padding: 10px 12px; margin: 10px 0 12px 0; cursor: pointer;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.35); transition: transform 0.12s;
+  }
+  .cal-entry:active { transform: scale(0.98); }
+  .cost-card {
+    background: linear-gradient(145deg, rgba(16,42,46,0.92), rgba(9,17,32,0.96));
+    border: 1px solid rgba(34,197,94,0.38); border-radius: 14px;
+    padding: 11px 12px; margin-bottom: 10px; box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+  }
+  .cost-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+  .cost-box {
+    background: rgba(6,13,28,0.75); border: 1px solid rgba(148,163,184,0.14);
+    border-radius: 10px; padding: 7px 4px; text-align: center;
+  }
+  .cost-lbl { font-size: 0.64rem; color: #94a3b8; font-weight: 700; }
+  .cost-val { font-size: 0.96rem; font-weight: 900; color: #4ade80; margin-top: 2px; white-space: nowrap; }
+  .cost-val.mon { color: #38bdf8; } .cost-val.yr { color: #fbbf24; }
+  .price-row { display: flex; align-items: center; gap: 6px; }
+  .price-row input { margin: 0; padding: 7px 9px; font-size: 0.84rem; text-align: center; font-weight: 800; width: 92px; flex-shrink: 0; }
+  .ios-icon {
+    width: 42px; height: 42px; border-radius: 10px; overflow: hidden; flex-shrink: 0;
+    background: #f8fafc; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; text-align: center;
+  }
+  .ios-icon-top { background: #ef4444; color: #fff; font-size: 0.54rem; font-weight: 900; padding: 2px 0; letter-spacing: 0.5px; text-transform: uppercase; }
+  .ios-icon-day { color: #0f172a; font-size: 1.2rem; font-weight: 900; line-height: 1.25; }
+  .ios-seg {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+    background: #060d1c; border: 1px solid rgba(148,163,184,0.18);
+    border-radius: 11px; padding: 3px; margin-bottom: 12px;
+  }
+  .ios-seg button {
+    border: none; background: transparent; color: #94a3b8; font-weight: 800;
+    font-size: 0.8rem; padding: 7px 4px; border-radius: 8px; cursor: pointer; transition: 0.18s;
+  }
+  .ios-seg button.act { background: #ef4444; color: #fff; box-shadow: 0 2px 8px rgba(239,68,68,0.45); }
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-nav-btn {
+    width: 32px; height: 32px; border-radius: 50%; border: 1px solid #334155;
+    background: #111c33; color: #f8fafc; font-size: 1rem; font-weight: 800; cursor: pointer;
+  }
+  .cal-nav-title { font-size: 0.98rem; font-weight: 900; color: #f8fafc; letter-spacing: 0.2px; }
+  .cal-wd { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.65rem; font-weight: 700; color: #64748b; margin-bottom: 5px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .cal-cell {
+    border-radius: 10px; padding: 5px 2px 4px 2px; text-align: center; cursor: pointer;
+    background: rgba(15,23,42,0.55); border: 1px solid rgba(148,163,184,0.08); min-height: 46px;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  }
+  .cal-cell.empty { background: transparent; border: none; cursor: default; }
+  .cal-cell.sel { border-color: #38bdf8; background: rgba(56,189,248,0.16); box-shadow: 0 0 8px rgba(56,189,248,0.28); }
+  .cal-num {
+    width: 22px; height: 22px; border-radius: 50%; font-size: 0.76rem; font-weight: 800;
+    display: flex; align-items: center; justify-content: center; color: #e2e8f0;
+  }
+  .cal-cell.today .cal-num { background: #ef4444; color: #fff; box-shadow: 0 0 8px rgba(239,68,68,0.6); }
+  .cal-m3 { font-size: 0.56rem; font-weight: 800; color: #fbbf24; line-height: 1.1; margin-top: 2px; }
+  .cal-m3.zero { color: #475569; font-weight: 600; }
+  .cal-dot { width: 16px; height: 3px; border-radius: 2px; margin-top: 2px; background: #1e293b; }
+  .cal-detail {
+    margin-top: 12px; padding: 11px 12px; border-radius: 13px;
+    background: linear-gradient(135deg, rgba(16,32,60,0.95), rgba(8,15,29,0.98));
+    border: 1px solid rgba(56,189,248,0.28);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .mon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .mon-cell {
+    background: rgba(15,23,42,0.75); border: 1px solid rgba(148,163,184,0.14);
+    border-radius: 12px; padding: 9px 7px; text-align: center; cursor: pointer;
+  }
+  .mon-cell.cur { border-color: #ef4444; background: rgba(239,68,68,0.12); }
+  .mon-name { font-size: 0.72rem; font-weight: 800; color: #94a3b8; }
+  .mon-cell.cur .mon-name { color: #f87171; }
+  .mon-val { font-size: 0.88rem; font-weight: 900; color: #fbbf24; margin: 4px 0 5px 0; }
+  .mon-val.zero { color: #475569; }
+  .mon-bar-bg { height: 4px; background: #1e293b; border-radius: 4px; overflow: hidden; }
+  .mon-bar-fg { height: 100%; background: linear-gradient(90deg, #38bdf8, #fbbf24); border-radius: 4px; }
+  .yr-bars {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end;
+    height: 128px; padding: 14px 6px 6px 6px; margin-top: 10px;
+    background: #060d1c; border: 1px solid rgba(148,163,184,0.14); border-radius: 13px;
+  }
+  .yr-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .yr-bar { width: 100%; max-width: 16px; border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, #fbbf24, #f97316); min-height: 3px; }
+  .yr-bar.zero { background: #1e293b; }
+  .yr-lbl { font-size: 0.56rem; color: #94a3b8; margin-top: 4px; font-weight: 700; }
+  .yr-val { font-size: 0.5rem; color: #fde68a; margin-bottom: 2px; font-weight: 800; }
+</style>
+</head>
+<body>
+
+<!-- ÜST BAR -->
+<div class="topbar">
+  <button class="menu-btn" onclick="tapServiceGate()" title="Menü">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <div class="brand">
+    <svg width="26" height="26" viewBox="0 0 24 24">
+      <defs><linearGradient id="fg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#38bdf8"/><stop offset="55%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs>
+      <path fill="url(#fg)" d="M12 2C9.5 6 6 8.5 6 13.5A6 6 0 0 0 12 19.5a6 6 0 0 0 6-6c0-3.2-1.8-5.7-3.5-7.8-.2 1.8-1 2.9-2 3.3C13.2 6.8 13 4.2 12 2z"/>
+      <path fill="#fb923c" d="M12.6 10.5c1.6 1.5 2.4 2.9 2.4 4.5a3 3 0 0 1-6 0c0-1.1.5-2.1 1.4-3 .1.9.6 1.5 1.3 1.7-.1-1.3.2-2.4.9-3.2z"/>
+    </svg>
+    Kombi <span>Otomasyon</span>
+  </div>
+  <div class="top-icons">
+    <svg id="icWifi" class="ic-ok" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>
+    <svg id="icCloud" class="ic-ok" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><path d="M9 14l2 2 4-4"/></svg>
+  </div>
+</div>
+
+<!-- HERO KOMBİ KARTI -->
+<div class="hero-card">
+  <div class="boiler-box">
+    <svg class="boiler-svg" viewBox="0 0 100 138">
+      <defs>
+        <linearGradient id="bBody" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#cbd5e1"/><stop offset="22%" stop-color="#f8fafc"/><stop offset="85%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>
+        <linearGradient id="bSide" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#64748b"/><stop offset="100%" stop-color="#cbd5e1"/></linearGradient>
+      </defs>
+      <polygon points="8,10 18,4 18,132 8,126" fill="url(#bSide)"/>
+      <rect x="18" y="4" width="74" height="128" rx="6" fill="url(#bBody)"/>
+      <text x="55" y="34" text-anchor="middle" font-family="sans-serif" font-weight="900" font-size="11" fill="#0284c7" letter-spacing="-0.5">DD</text>
+      <rect x="29" y="88" width="52" height="30" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1.2"/>
+      <rect x="42" y="94" width="26" height="12" rx="2" fill="#0c2647"/>
+      <text id="svgLcd" x="55" y="103" text-anchor="middle" font-family="monospace" font-weight="800" font-size="8.5" fill="#38bdf8">42°</text>
+      <circle cx="36" cy="100" r="2.2" fill="#475569"/>
+      <circle cx="74" cy="100" r="2.2" fill="#475569"/>
+      <circle cx="48" cy="112" r="1.8" fill="#64748b"/>
+      <circle cx="55" cy="112" r="1.8" fill="#64748b"/>
+      <circle cx="62" cy="112" r="1.8" fill="#64748b"/>
+    </svg>
+  </div>
+  <div class="hero-right">
+    <div class="hero-status" onclick="openModal('mFault')" style="cursor:pointer;">
+      <div class="st-circle" id="stCircle">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div>
+        <div class="st-title" id="stTitle">Kombi Hazır</div>
+        <div class="st-sub" id="stSub">Normal Çalışma</div>
+      </div>
+    </div>
+    <div class="hero-metrics">
+      <div class="hm-item">
+        <div class="hm-ic">
+          <svg id="svgFlame" width="20" height="20" viewBox="0 0 24 24" fill="#f97316"><path d="M12 2c-2 3.5-6 6.2-6 11a6 6 0 0 0 12 0c0-3-1.6-5.2-3.2-7.1-.2 1.6-.9 2.6-1.8 3 .5-2.1.3-4.6-1-6.9z"/></svg>
+        </div>
+        <div class="hm-lbl">Alev</div>
+        <div class="hm-val c-muted" id="vFlame">Yok</div>
+      </div>
+      <div class="hm-item">
+        <div class="hm-ic">
+          <svg id="svgMod" width="20" height="18" viewBox="0 0 24 20">
+            <rect id="mb1" x="2" y="13" width="3.5" height="6" rx="1" fill="#334155" style="transition:fill .25s"/>
+            <rect id="mb2" x="7.5" y="9" width="3.5" height="10" rx="1" fill="#334155" style="transition:fill .25s"/>
+            <rect id="mb3" x="13" y="5" width="3.5" height="14" rx="1" fill="#334155" style="transition:fill .25s"/>
+            <rect id="mb4" x="18.5" y="1" width="3.5" height="18" rx="1" fill="#334155" style="transition:fill .25s"/>
+          </svg>
+        </div>
+        <div class="hm-lbl">Brülör</div>
+        <div class="hm-val c-muted" id="vMod">%0</div>
+      </div>
+      <div class="hm-item">
+        <div class="hm-ic">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="9"/><path d="M12 12l4-3"/><circle cx="12" cy="12" r="1.2" fill="#60a5fa"/>
+          </svg>
+        </div>
+        <div class="hm-lbl">Basınç</div>
+        <div class="hm-val" id="vPress">1.2 bar</div>
+      </div>
+      <div class="hm-item" onclick="openModal('mSettings')" style="cursor:pointer;">
+        <div class="hm-ic">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2c-2.5 3.5-6 6.8-6 11a6 6 0 0 0 12 0c0-4.2-3.5-7.5-6-11z"/><path d="M12 16v-4"/>
+          </svg>
+        </div>
+        <div class="hm-lbl">Gaz (Gün)</div>
+        <div class="hm-val" id="vGasDay" style="color:#fbbf24;">0.00m³</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ÇİFT DAİRESEL SICAKLIK KADRANI -->
+<div class="dial-grid">
+  <!-- KALORİFER -->
+  <div class="dial-card">
+    <div class="dial-head">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"><path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14M2 8h20M2 16h20"/></svg>
+      Kalorifer Sıcaklığı
+    </div>
+    <div class="dial-wrap">
+      <button type="button" class="step-btn minus" ontouchend="tapStep(event,'flow',-1)" onclick="stepTemp('flow',-1)">−</button>
+      <svg class="dial-svg" viewBox="0 0 120 105">
+        <defs><linearGradient id="gFlow" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="48%" stop-color="#38bdf8"/><stop offset="72%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs>
+        <path d="M 22 86 A 46 46 0 1 1 98 86" fill="none" stroke="#1e293b" stroke-width="11" stroke-linecap="round"/>
+        <path id="arcFlow" d="M 22 86 A 46 46 0 1 1 98 86" fill="none" stroke="url(#gFlow)" stroke-width="11" stroke-linecap="round" stroke-dasharray="208" stroke-dashoffset="90"/>
+      </svg>
+      <div class="dial-val-box">
+        <div><span class="dial-num" id="vFlowSet">40</span><span class="dial-unit">°C</span></div>
+        <div class="dial-live" id="vFlowLive">Anlık --°C</div>
+      </div>
+      <button type="button" class="step-btn plus" ontouchend="tapStep(event,'flow',1)" onclick="stepTemp('flow',1)">+</button>
+    </div>
+    <div class="dial-range">30 – 72 °C</div>
+  </div>
+
+  <!-- SICAK SU -->
+  <div class="dial-card">
+    <div class="dial-head">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6M12 4v4M6 12h10a2 2 0 0 1 2 2v2h-3v-1a1 1 0 0 0-1-1H6v-2z"/><path d="M16.5 19.5c0 1.2 1.5 2 1.5 2s1.5-.8 1.5-2a1.5 1.5 0 0 0-3 0z" fill="#38bdf8" stroke="none"/></svg>
+      Sıcak Su Sıcaklığı
+    </div>
+    <div class="dial-wrap">
+      <button type="button" class="step-btn minus" ontouchend="tapStep(event,'dhw',-1)" onclick="stepTemp('dhw',-1)">−</button>
+      <svg class="dial-svg" viewBox="0 0 120 105">
+        <defs><linearGradient id="gDhw" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563eb"/><stop offset="50%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#f97316"/></linearGradient></defs>
+        <path d="M 22 86 A 46 46 0 1 1 98 86" fill="none" stroke="#1e293b" stroke-width="11" stroke-linecap="round"/>
+        <path id="arcDhw" d="M 22 86 A 46 46 0 1 1 98 86" fill="none" stroke="url(#gDhw)" stroke-width="11" stroke-linecap="round" stroke-dasharray="208" stroke-dashoffset="110"/>
+      </svg>
+      <div class="dial-val-box">
+        <div><span class="dial-num" id="vDhwSet">45</span><span class="dial-unit">°C</span></div>
+        <div class="dial-live" id="vDhwLive">Anlık --°C</div>
+      </div>
+      <button type="button" class="step-btn plus" ontouchend="tapStep(event,'dhw',1)" onclick="stepTemp('dhw',1)">+</button>
+    </div>
+    <div class="dial-range">35 – 60 °C</div>
+  </div>
+</div>
+
+<!-- KOMBİ AÇ / KAPA KARTI -->
+<div class="power-card" onclick="togglePower()">
+  <div class="power-left">
+    <div class="pwr-ring" id="pwrRing">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/></svg>
+    </div>
+    <div>
+      <div class="pwr-title">Kombi Aç / Kapa</div>
+      <div class="pwr-sub" id="pwrSub">Kombiyi açmak veya kapatmak için dokunun</div>
+    </div>
+  </div>
+  <label class="sw" onclick="event.stopPropagation()">
+    <input type="checkbox" id="swPower" checked onchange="onPowerSwitch()">
+    <span class="sw-track"></span>
+  </label>
+</div>
+
+<!-- 2x3 ALT KART IZGARASI -->
+<div class="menu-grid">
+  <!-- 3. KIŞ MODU -->
+  <div class="m-card" id="cardWinter" onclick="setMode(2)">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.1" stroke-linecap="round"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Kış Modu</div>
+        <div class="m-sub" id="vWinterSub">Kalorifer + Su</div>
+      </div>
+    </div>
+    <span class="chev" id="chWinter">›</span>
+  </div>
+
+  <!-- 4. YAZ MODU -->
+  <div class="m-card" id="cardSummer" onclick="setMode(1)">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2.1" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Yaz Modu</div>
+        <div class="m-sub" id="vSummerSub">Sadece Sıcak Su</div>
+      </div>
+    </div>
+    <span class="chev" id="chSummer">›</span>
+  </div>
+
+  <!-- 3. MANUEL MOD (eBUS KAPAT) -->
+  <div class="m-card" id="cardManual" onclick="toggleManual()">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Manuel Mod</div>
+        <div class="m-sub" id="vManTxt">eBUS Aktif</div>
+      </div>
+    </div>
+    <label class="sw sw-sm" onclick="event.stopPropagation()">
+      <input type="checkbox" id="swManual" onchange="onManualSwitch()">
+      <span class="sw-track"></span>
+    </label>
+  </div>
+
+  <!-- 2. TASARRUF MODU -->
+  <div class="m-card" onclick="toggleEco()">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Tasarruf Modu</div>
+        <div class="m-sub" id="vEcoTxt" style="color:#4ade80;font-weight:700;">Kapalı</div>
+      </div>
+    </div>
+    <label class="sw sw-sm" onclick="event.stopPropagation()">
+      <input type="checkbox" id="swEco" onchange="onEcoSwitch()">
+      <span class="sw-track"></span>
+    </label>
+  </div>
+
+  <!-- 5. HIZLI ISITMA (TURBO) -->
+  <div class="m-card" id="cardBoost" onclick="toggleBoost()">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Hızlı Isıtma</div>
+        <div class="m-sub" id="vBoostTxt">60°C • 45 dk</div>
+      </div>
+    </div>
+    <label class="sw sw-sm" onclick="event.stopPropagation()">
+      <input type="checkbox" id="swBoost" onchange="onBoostSwitch()">
+      <span class="sw-track"></span>
+    </label>
+  </div>
+
+  <!-- 6. AYARLAR -->
+  <div class="m-card" onclick="openModal('mSettings')">
+    <div class="m-left">
+      <div class="m-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#3b82f6"><path d="M19.14 12.94a7.43 7.43 0 0 0 .05-.94 7.43 7.43 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54a7.28 7.28 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.43 7.43 0 0 0-.05.94 7.43 7.43 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .61.22l2.39-.96c.5.39 1.05.71 1.63.94l.36 2.54a.48.48 0 0 0 .48.41h3.84a.48.48 0 0 0 .48-.41l.36-2.54a7.28 7.28 0 0 0 1.63-.94l2.39.96a.5.5 0 0 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 15.6 12 3.6 3.6 0 0 1 12 15.6z"/></svg>
+      </div>
+      <div style="min-width:0">
+        <div class="m-title">Ayarlar</div>
+        <div class="m-sub" id="vModeSub">Detay & Bulut</div>
+      </div>
+    </div>
+    <span class="chev">›</span>
+  </div>
+</div>
+
+<!-- ALT DURUM ÇUBUĞU -->
+<div class="footer-bar">
+  <div class="f-online"><span class="dot-live" id="dotConn"></span><span id="vConnTxt">Çevrimiçi</span></div>
+  <div id="vLastUpd">Son Güncelleme: --:--:--</div>
+  <div style="font-weight:700;color:#cbd5e1;">v2.0.0</div>
+</div>
+
+<div class="modal-bg" id="mFault" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>🚨 Hata & Kombi Reset</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <div class="row-item"><span>Aktif Kod:</span><b id="mErrCode">YOK</b></div>
+    <div class="row-item"><span>Açıklama:</span><b id="mErrDesc">Sistem Normal</b></div>
+    <div class="row-item"><span>Durum Kodu:</span><b id="mStateCode">S.00</b></div>
+    <button class="btn btn-red" style="width:100%;margin-top:14px;padding:12px;" onclick="resetBoiler()">🔄 Kombiye RESET Gönder</button>
+  </div>
+</div>
+<div class="modal-bg" id="mSettings" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>⚙️ Kullanıcı Ayarları</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <div class="cost-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <b style="font-size:0.84rem;color:#4ade80;">₺ Doğalgaz Harcama Tutarı</b>
+        <span id="priceMsg" style="font-size:0.68rem;color:#38bdf8;font-weight:700;"></span>
+      </div>
+      <div class="cost-grid">
+        <div class="cost-box"><div class="cost-lbl">Günlük</div><div class="cost-val" id="mCostDay">0.00 ₺</div></div>
+        <div class="cost-box"><div class="cost-lbl">Aylık</div><div class="cost-val mon" id="mCostMon">0.00 ₺</div></div>
+        <div class="cost-box"><div class="cost-lbl">Yıllık</div><div class="cost-val yr" id="mCostYr">0.00 ₺</div></div>
+      </div>
+      <div class="price-row">
+        <span style="font-size:0.74rem;color:#cbd5e1;flex:1;">1 m³ Birim Fiyatı (₺):</span>
+        <input type="text" inputmode="decimal" id="inGasPrice" value="10.00" placeholder="10.00">
+        <button type="button" class="btn btn-ok" style="padding:7px 11px;font-size:0.76rem;" onclick="saveGasPrice()">💾 Kaydet</button>
+      </div>
+    </div>
+    <div class="cal-entry" onclick="openGasCal()">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <div class="ios-icon">
+          <div class="ios-icon-top" id="calBadgeM">KAS</div>
+          <div class="ios-icon-day" id="calBadgeD">21</div>
+        </div>
+        <div style="min-width:0;">
+          <div style="font-size:0.86rem;font-weight:900;color:#f8fafc;">📅 Doğalgaz Tüketim Takvimi</div>
+          <div id="mCalCardSub" style="font-size:0.7rem;color:#fbbf24;font-weight:700;margin-top:2px;">Gün: 0.00 • Ay: 0.00 • Yıl: 0.00 m³</div>
+        </div>
+      </div>
+      <span class="chev" style="font-size:1.3rem;color:#fbbf24;">›</span>
+    </div>
+    <div class="row-item"><span>🌍 Dış Hava (<span id="mCity">Ankara</span>):</span><b id="mOut">-- °C</b></div>
+    <div class="row-item"><span>🔥 Kalorifer Gidiş / Dönüş:</span><b id="mFlowRet">-- / -- °C</b></div>
+    <div class="row-item"><span>⛽ Bugün Harcanan Gaz:</span><b id="mGasDay" style="color:#fbbf24;">0.000 m³</b></div>
+    <div class="row-item"><span>📊 Toplam Gaz Sayacı:</span><b id="mGasTot">0.00 m³</b></div>
+    <div class="row-item"><span>💧 Sirkülasyon Pompası:</span><b id="mPump">DURUYOR</b></div>
+    <div class="row-item"><span>⏱️ Bugün Toplam Yanma:</span><b id="mRun">0 dk</b></div>
+    <div style="border-top:1px solid rgba(56,189,248,0.25);padding-top:12px;margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(148,163,184,0.14);">
+        <div>
+          <b style="font-size:0.86rem;color:#4ade80;">🛡️ Otonom Kopma & Donma Koruması</b>
+          <div id="mGuardSub" style="font-size:0.68rem;color:#94a3b8;margin-top:2px;">30dk kopma: ≥10°C kapat, ≤5°C 33°C yak</div>
+        </div>
+        <label class="sw sw-sm">
+          <input type="checkbox" id="swGuard" checked onchange="onGuardToggle()">
+          <span class="sw-track"></span>
+        </label>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <b style="font-size:0.9rem;color:#38bdf8;">🌡️ Oda Termostatı</b>
+        <label class="sw sw-sm">
+          <input type="checkbox" id="swRoom" onchange="onRoomToggle()">
+          <span class="sw-track"></span>
+        </label>
+      </div>
+      <div class="row-item"><span>Durum:</span><b id="mRoomSt" style="color:#94a3b8;">Bekleniyor (Bağlı Değil)</b></div>
+      <div class="row-item"><span>Oda Sıcaklığı / Nem:</span><b id="mRoomVal">-- °C / --%</b></div>
+      <div class="row-item" style="border-bottom:none;">
+        <span>Hedef Oda Sıcaklığı:</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button type="button" class="btn" style="padding:4px 11px;border-radius:8px;" ontouchend="tapRoom(event,-0.5)" onclick="stepRoom(-0.5)">−</button>
+          <b id="mRoomSet" style="min-width:52px;text-align:center;color:#4ade80;">22.5 °C</b>
+          <button type="button" class="btn" style="padding:4px 11px;border-radius:8px;" ontouchend="tapRoom(event,0.5)" onclick="stepRoom(0.5)">+</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,163,184,0.14);">
+        <button class="btn" style="background:#0e4a6f;padding:10px 6px;font-size:0.78rem;" onclick="closeAll();openModal('mCloud')">🌐 Uzak Bağlantı (<span class="dot-live" id="dotCloud"></span><span id="vCloudTxt">Aktif</span>)</button>
+        <button class="btn" style="background:#0284c7;padding:10px 6px;font-size:0.78rem;" onclick="closeAll();openModal('mOta')">📶 Wi-Fi Ayarları</button>
+        <button class="btn btn-red" style="padding:10px 6px;font-size:0.78rem;" onclick="closeAll();openModal('mFault')">🚨 Hata (<span id="vErrCode">YOK</span>)</button>
+        <button class="btn" style="background:#1e293b;padding:10px 6px;font-size:0.78rem;" onclick="tapServiceGate()">🔐 Servis</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="mGasCal" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>📅 Doğalgaz Tüketim Takvimi</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <div class="ios-seg">
+      <button type="button" id="segD" class="act" onclick="setCalTab('D')">Günlük</button>
+      <button type="button" id="segM" onclick="setCalTab('M')">Aylık</button>
+      <button type="button" id="segY" onclick="setCalTab('Y')">Yıllık</button>
+    </div>
+    <div id="calBody">Yükleniyor...</div>
+  </div>
+</div>
+<div class="modal-bg" id="mSrvAuth" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>🔐 Yetkili Servis Girişi</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:8px;">Teknik kurulum, kombi uyumluluk testi ve OTA ayarları için servis şifresini girin:</p>
+    <input type="password" inputmode="numeric" id="inSrvPin" placeholder="Servis Şifresi" onkeydown="if(event.key==='Enter')checkServicePin()">
+    <button type="button" class="btn btn-ok" style="width:100%;padding:11px;" onclick="checkServicePin()">🔓 Servis Menüsünü Aç</button>
+    <div id="srvAuthMsg" style="margin-top:8px;font-size:0.8rem;color:#ef4444;"></div>
+  </div>
+</div>
+<div class="modal-bg" id="mService" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>🔧 Yetkili Servis & Kurulum</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(56,189,248,0.25);">
+      <b style="font-size:0.88rem;color:#38bdf8;">🔍 Kombi Uyumluluk Asistanı</b>
+      <div style="font-size:0.68rem;color:#94a3b8;margin:2px 0 8px 0;">İnternetsiz eBUS tarama, anakart tanıma & otomatik kurulum</div>
+      <button type="button" class="btn" id="btnDiag" style="width:100%;padding:10px;background:linear-gradient(90deg,#0284c7,#2563eb);" onclick="runCompatWizard()">🔎 Kombiyi Tara & Otomatik Ayarla</button>
+      <div id="diagBox" style="display:none;margin-top:9px;padding:10px;border-radius:10px;background:#060e1f;border:1px solid rgba(56,189,248,0.3);font-size:0.76rem;line-height:1.45;"></div>
+    </div>
+    <div class="row-item"><span>🎯 Kombi Aktif Hedef (d.05):</span><b id="mBDes" style="color:#4ade80;">-- °C</b></div>
+    <div class="row-item"><span>⚡ Kısmi Yük Gücü (d.00):</span><b id="mD00" style="color:#38bdf8;">20 kW</b></div>
+    <div class="row-item"><span>🔥 Anlık Gaz / Güç:</span><b id="mGasRate" style="color:#fbbf24;">0.00 m³/sa (0.0 kW)</b></div>
+    <div class="row-item"><span>📡 ESP-NOW MAC / Kanal:</span><b id="mEspNow" style="font-family:monospace;font-size:0.75rem;color:#fbbf24;">--</b></div>
+    <div class="row-item"><span>eBUS 0xAA Sync Sayısı:</span><b id="mSync">0</b></div>
+    <div class="row-item"><span>Kombi Sorgu (MiGo):</span><b id="mHits">0</b></div>
+    <div class="row-item"><span>Sinyal Polaritesi:</span><b id="mPol">RX: NORMAL | TX: NORMAL</b></div>
+    <div class="row-item"><span>Yerel IP / mDNS:</span><b id="mIp">192.168.0.220</b></div>
+    <code id="mLog">Yükleniyor...</code>
+    <code id="mHex">Dinleniyor...</code>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+      <button class="btn btn-ok" style="flex:1;" onclick="cmdAction('/api/poll')">Sorgula</button>
+      <button class="btn btn-warn" style="flex:1;" onclick="cmdAction('/api/inv_rx')">RX Çevir</button>
+      <button class="btn btn-warn" style="flex:1;" onclick="cmdAction('/api/inv_tx')">TX Çevir</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-warn" style="flex:1;" onclick="resetRuntime()">🔄 Günlük Sıfırla</button>
+      <button class="btn btn-red" style="flex:1;" onclick="resetTotalGas()">🗑️ Yıllık Sıfırla</button>
+    </div>
+    <hr style="border:none;border-top:1px solid #1e293b;margin:14px 0;">
+    <b style="font-size:0.86rem;color:#38bdf8;">🚀 OTA Kablosuz Yazılım Güncelleme</b>
+    <p style="font-size:0.75rem;color:#94a3b8;margin:4px 0 6px 0;">Derlenmiş <code>.bin</code> dosyasını seçip kablosuz yükleyin:</p>
+    <form method="POST" action="/update" enctype="multipart/form-data">
+      <input type="file" name="update" accept=".bin" required>
+      <button type="submit" class="btn btn-ok" style="width:100%;padding:10px;">⬆️ .bin Yazılımını Yükle</button>
+    </form>
+    <hr style="border:none;border-top:1px solid #1e293b;margin:14px 0;">
+    <b style="font-size:0.86rem;color:#fbbf24;">🔑 Servis Şifresi Değiştir</b>
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <input type="password" inputmode="numeric" id="inNewPin" placeholder="Yeni 4+ hane şifre" style="margin:0;flex:1;">
+      <button type="button" class="btn btn-warn" onclick="saveServicePin()">Kaydet</button>
+    </div>
+    <div id="srvPinMsg" style="margin-top:6px;font-size:0.76rem;color:#4ade80;"></div>
+  </div>
+</div>
+<div class="modal-bg" id="mOta" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>📶 Wi-Fi Bağlantı Ayarları</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <button class="btn" id="btnScan" onclick="scanWifi()" style="width:100%;margin-bottom:10px;">🔍 Wi-Fi Ağlarını Tara</button>
+    <div id="wifiList"></div>
+    <input type="text" id="inSsid" placeholder="Wi-Fi Ağ Adı (SSID)">
+    <input type="password" id="inPass" placeholder="Wi-Fi Şifresi">
+    <button class="btn btn-ok" onclick="saveWifi()" style="width:100%;">💾 Wi-Fi Kaydet ve Bağlan</button>
+    <div id="wifiMsg" style="margin-top:8px;font-size:0.8rem;color:#4ade80;"></div>
+  </div>
+</div>
+<div class="modal-bg" id="mCloud" onclick="closeModals(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-hd"><h3>🌐 Uzak Bağlantı & Güvenlik</h3><button class="close-btn" onclick="closeAll()">✕</button></div>
+    <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:6px;">Gizli MQTT Cihaz Anahtarınız (<b>broker.emqx.io</b>):</p>
+    <input type="text" id="inCloudKey" value="torun_kombi_06">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="btn btn-ok" style="flex:1;" onclick="saveCloudKey();if(mqttWs)mqttWs.close();mqConnect();">💾 Kaydet & Bağlan</button>
+    </div>
+    <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:6px;">🔒 Uygulama Giriş PIN Kilidi (isteğe bağlı):</p>
+    <input type="password" id="inPinSet" maxlength="4" placeholder="4 haneli PIN (örn: 1234)">
+    <div style="display:flex;gap:8px;">
+      <button class="btn" style="flex:1;" onclick="savePin()">🔒 PIN Kaydet</button>
+      <button class="btn btn-warn" style="flex:1;" onclick="clearPin()">🔓 PIN Kaldır</button>
+    </div>
+    <button id="btnPwaInstall" class="btn btn-ok" style="display:none;width:100%;margin-top:12px;padding:12px;" onclick="installPwa()">📲 Uygulamayı Telefonuna Yükle</button>
+    <div id="cloudMsg" style="margin-top:8px;font-size:0.8rem;color:#4ade80;"></div>
+  </div>
+</div>
+<div id="pinOverlay" style="display:none;position:fixed;inset:0;z-index:999;background:radial-gradient(circle at 50% 20%,#112240,#050a14);align-items:center;justify-content:center;flex-direction:column;padding:24px;">
+  <img src="icon-192.png" width="76" height="76" style="border-radius:18px;margin-bottom:14px;box-shadow:0 0 24px rgba(56,189,248,0.4);">
+  <h2 style="font-size:1.15rem;margin-bottom:6px;">Kombi Otomasyon</h2>
+  <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:16px;">Devam etmek için 4 haneli PIN girin</p>
+  <input type="password" id="pinInput" inputmode="numeric" maxlength="4" style="max-width:180px;text-align:center;font-size:1.5rem;letter-spacing:8px;" placeholder="••••">
+  <button class="btn btn-ok" style="width:180px;padding:12px;" onclick="unlockPin()">🔓 Giriş Yap</button>
+  <div id="pinErr" style="color:#ef4444;font-size:0.8rem;margin-top:10px;"></div>
+</div>
+
+<script>
+let state = { mode: 2, flowSet: 40, dhwSet: 45, eco: false, manual: false, smart: false, roomSet: 22.5, lastOnMode: 2 };
+let pendingTimer = null;
+let lockUntil = 0;
+let isCloudMode = true || (window.location.protocol === 'file:' || window.location.hostname === '');
+
+// ===== DAHİLİ SAF JS MQTT-OVER-WEBSOCKET (Anında POLL + Önbellek + Uyanma Koruması) =====
+let mqttWs = null, mqttReady = false, mqttPingTm = null, lastCloudRxMs = 0;
+function mqStr(s){ const b=new TextEncoder().encode(s); return [b.length>>8, b.length&255, ...b]; }
+function mqLen(n){ const r=[]; do{ let b=n%128; n=Math.floor(n/128); if(n>0) b|=128; r.push(b); }while(n>0); return r; }
+function mqConnect(force){
+  if(!force && mqttWs && (mqttWs.readyState===0 || mqttWs.readyState===1)) return;
+  try { if (mqttWs) { mqttWs.onclose = null; mqttWs.close(); } } catch(e){}
+  mqttReady = false;
+  document.getElementById('vConnTxt').innerText = 'Bulut Bağlanıyor...';
+  try {
+    mqttWs = new WebSocket('wss://broker.emqx.io:8084/mqtt', 'mqtt');
+    mqttWs.binaryType = 'arraybuffer';
+    mqttWs.onopen = () => {
+      const cid = mqStr('web_' + Math.random().toString(16).slice(2,8));
+      const body = [0,4,77,81,84,84, 4, 2, 0,30, ...cid];
+      mqttWs.send(new Uint8Array([0x10, ...mqLen(body.length), ...body]));
+    };
+    mqttWs.onmessage = (ev) => {
+      const u = new Uint8Array(ev.data);
+      let pos = 0;
+      while (pos < u.length) {
+        const t = u[pos] & 0xF0;
+        let idx = pos + 1, mult = 1, rem = 0, b = 0;
+        do { b = u[idx++]; rem += (b & 127) * mult; mult *= 128; } while((b & 128) && idx < u.length);
+        const pktEnd = idx + rem;
+        if (t === 0x20) { // CONNACK -> Subscribe state + ANINDA POLL iste!
+          mqttReady = true;
+          lastCloudRxMs = Date.now();
+          document.getElementById('vConnTxt').innerText = 'Bulut Bağlandı...';
+          const sub = [0,1, ...mqStr(`torun/${getCloudKey()}/state`), 0];
+          mqttWs.send(new Uint8Array([0x82, ...mqLen(sub.length), ...sub]));
+          const sub2 = [0,2, ...mqStr(`torun/${getCloudKey()}/gcal`), 0];
+          mqttWs.send(new Uint8Array([0x82, ...mqLen(sub2.length), ...sub2]));
+          // Beklemeden ESP32'den canlı durum iste (<250ms yanıt!)
+          const tp = mqStr(`torun/${getCloudKey()}/cmd`);
+          const pb = [...tp, 80,79,76,76]; // "POLL"
+          mqttWs.send(new Uint8Array([0x30, ...mqLen(pb.length), ...pb]));
+          clearInterval(mqttPingTm);
+          mqttPingTm = setInterval(() => {
+            if (!mqttWs || mqttWs.readyState !== 1) return;
+            if (Date.now() - lastCloudRxMs > 22000) { mqConnect(true); return; }
+            mqttWs.send(new Uint8Array([0xC0,0]));
+          }, 15000);
+        } else if (t === 0x30) { // PUBLISH
+          lastCloudRxMs = Date.now();
+          const tl = (u[idx]<<8) | u[idx+1];
+          const topStr = new TextDecoder().decode(u.slice(idx + 2, idx + 2 + tl));
+          const msg = new TextDecoder().decode(u.slice(idx + 2 + tl, pktEnd));
+          try {
+            const obj = JSON.parse(msg);
+            if (topStr.endsWith('/gcal')) {
+              gasCalData = obj;
+              localStorage.setItem('torun_gcal', msg);
+              renderGasCal();
+            } else {
+              localStorage.setItem('torun_last_state', msg);
+              applyUI(obj, true);
+            }
+          } catch(e){}
+        }
+        pos = pktEnd;
+      }
+    };
+    mqttWs.onclose = () => { mqttReady = false; document.getElementById('dotConn').className='dot-live off'; document.getElementById('vConnTxt').innerText='Yeniden Bağlanıyor...'; setTimeout(() => { if(isCloudMode) mqConnect(true); }, 1500); };
+    mqttWs.onerror = () => { mqttReady = false; };
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && isCloudMode) {
+    if (!mqttWs || mqttWs.readyState !== 1 || Date.now() - lastCloudRxMs > 6000) mqConnect(true);
+    else mqPubCmd('POLL');
+  }
+});
+window.addEventListener('online', () => { if (isCloudMode) mqConnect(true); });
+function mqPubCmd(cmd){
+  if(!mqttWs || mqttWs.readyState !== 1){ mqConnect(); setTimeout(() => mqPubCmd(cmd), 1200); return; }
+  const tp = mqStr(`torun/${getCloudKey()}/cmd`);
+  const pl = Array.from(new TextEncoder().encode(cmd));
+  const body = [...tp, ...pl];
+  mqttWs.send(new Uint8Array([0x30, ...mqLen(body.length), ...body]));
+}
+
+function getCloudKey() {
+  const el = document.getElementById('inCloudKey');
+  return (el && el.value.trim().length > 3) ? el.value.trim() : 'torun_kombi_06';
+}
+
+function openModal(id) {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add('open');
+  m.scrollTop = 0;
+  document.body.style.overflow = 'hidden';
+}
+function closeAll() {
+  document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('open'));
+  document.body.style.overflow = '';
+}
+function closeModals(e) { if (e.target.classList.contains('modal-bg')) closeAll(); }
+
+function setArc(id, val, min, max) {
+  const pct = Math.max(0, Math.min(1, (val - min) / (max - min)));
+  const offset = 208 * (1 - pct);
+  document.getElementById(id).style.strokeDashoffset = offset.toFixed(1);
+}
+
+let lastTouchMs = 0;
+function tapStep(e, kind, delta) {
+  e.preventDefault();
+  e.stopPropagation();
+  lastTouchMs = Date.now();
+  stepTemp(kind, delta, true);
+}
+
+function stepTemp(kind, delta, fromTouch) {
+  if (!fromTouch && (Date.now() - lastTouchMs < 450)) return;
+  lockUntil = Date.now() + 2500;
+  if (kind === 'flow') {
+    const maxF = state.eco ? 50 : 72;
+    state.flowSet = Math.max(30, Math.min(maxF, Math.round(state.flowSet + delta)));
+    document.getElementById('vFlowSet').innerText = state.flowSet;
+    setArc('arcFlow', state.flowSet, 30, 72);
+  } else {
+    state.dhwSet = Math.max(35, Math.min(60, Math.round(state.dhwSet + delta)));
+    document.getElementById('vDhwSet').innerText = state.dhwSet;
+    setArc('arcDhw', state.dhwSet, 35, 60);
+  }
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(sendSettings, 220);
+}
+
+function togglePower() {
+  const sw = document.getElementById('swPower');
+  sw.checked = !sw.checked;
+  onPowerSwitch();
+}
+function onPowerSwitch() {
+  lockUntil = Date.now() + 2500;
+  const on = document.getElementById('swPower').checked;
+  state.mode = on ? (state.lastOnMode || 2) : 0;
+  renderPowerUI();
+  sendSettings();
+}
+function setMode(m) {
+  lockUntil = Date.now() + 2500;
+  state.mode = m;
+  if (m > 0) state.lastOnMode = m;
+  renderPowerUI();
+  sendSettings();
+}
+function renderPowerUI() {
+  const on = state.mode > 0;
+  document.getElementById('swPower').checked = on;
+  document.getElementById('pwrRing').className = 'pwr-ring' + (on ? '' : ' off');
+  const cw = document.getElementById('cardWinter');
+  const cs = document.getElementById('cardSummer');
+  if (cw && cs) {
+    cw.className = 'm-card' + (state.mode === 2 ? ' winter-act' : '');
+    cs.className = 'm-card' + (state.mode === 1 ? ' summer-act' : '');
+    document.getElementById('vWinterSub').innerText = state.mode === 2 ? 'Aktif • Kalorifer+Su' : 'Kalorifer + Su';
+    document.getElementById('vWinterSub').style.color = state.mode === 2 ? '#38bdf8' : '#8fa3bf';
+    document.getElementById('vSummerSub').innerText = state.mode === 1 ? 'Aktif • Sadece Su' : 'Sadece Sıcak Su';
+    document.getElementById('vSummerSub').style.color = state.mode === 1 ? '#fb923c' : '#8fa3bf';
+    document.getElementById('chWinter').innerText = state.mode === 2 ? '✓' : '›';
+    document.getElementById('chWinter').style.color = state.mode === 2 ? '#38bdf8' : '#64748b';
+    document.getElementById('chSummer').innerText = state.mode === 1 ? '✓' : '›';
+    document.getElementById('chSummer').style.color = state.mode === 1 ? '#fb923c' : '#64748b';
+  }
+}
+
+function toggleManual() {
+  const sw = document.getElementById('swManual');
+  sw.checked = !sw.checked;
+  onManualSwitch();
+}
+function onManualSwitch() {
+  lockUntil = Date.now() + 2500;
+  state.manual = document.getElementById('swManual').checked;
+  renderManualUI();
+  if (!isCloudMode) {
+    fetch(`/api/set?manual=${state.manual ? 1 : 0}`)
+      .then(() => { lockUntil = 0; setTimeout(fetchStatus, 350); })
+      .catch(() => { isCloudMode = true; mqPubCmd(`MAN:${state.manual ? 1 : 0}`); });
+  } else {
+    mqPubCmd(`MAN:${state.manual ? 1 : 0}`);
+  }
+}
+function renderManualUI() {
+  const cm = document.getElementById('cardManual');
+  const mt = document.getElementById('vManTxt');
+  document.getElementById('swManual').checked = state.manual;
+  if (cm) cm.className = 'm-card' + (state.manual ? ' manual-act' : '');
+  if (mt) {
+    mt.innerText = state.manual ? 'eBUS Kapalı (Panel)' : 'eBUS Aktif';
+    mt.style.color = state.manual ? '#fbbf24' : '#8fa3bf';
+  }
+}
+
+function toggleBoost() {
+  const sw = document.getElementById('swBoost');
+  sw.checked = !sw.checked;
+  onBoostSwitch();
+}
+function onBoostSwitch() {
+  lockUntil = Date.now() + 2500;
+  state.boost = document.getElementById('swBoost').checked;
+  renderBoostUI(state.boost ? 45 : 0);
+  if (!isCloudMode) {
+    fetch(`/api/set?boost=${state.boost ? 1 : 0}`)
+      .then(() => { lockUntil = 0; setTimeout(fetchStatus, 350); })
+      .catch(() => { isCloudMode = true; mqPubCmd(`BST:${state.boost ? 1 : 0}`); });
+  } else {
+    mqPubCmd(`BST:${state.boost ? 1 : 0}`);
+  }
+}
+function renderBoostUI(rem) {
+  const cb = document.getElementById('cardBoost');
+  const bt = document.getElementById('vBoostTxt');
+  const sw = document.getElementById('swBoost');
+  if (sw) sw.checked = !!state.boost;
+  if (cb) cb.className = 'm-card' + (state.boost ? ' boost-act' : '');
+  if (bt) {
+    bt.innerText = state.boost ? `Aktif • ${rem || 45} dk` : '60°C • 45 dk';
+    bt.style.color = state.boost ? '#fb923c' : '#8fa3bf';
+  }
+}
+
+function toggleEco() {
+  const sw = document.getElementById('swEco');
+  sw.checked = !sw.checked;
+  onEcoSwitch();
+}
+function onEcoSwitch() {
+  lockUntil = Date.now() + 2500;
+  state.eco = document.getElementById('swEco').checked;
+  document.getElementById('vEcoTxt').innerText = state.eco ? 'Aktif (9 kW)' : 'Kapalı';
+  document.getElementById('vEcoTxt').style.color = state.eco ? '#4ade80' : '#8fa3bf';
+  if (!isCloudMode) {
+    fetch(`/api/set?eco=${state.eco ? 1 : 0}`)
+      .then(() => { lockUntil = 0; setTimeout(fetchStatus, 350); })
+      .catch(() => { isCloudMode = true; mqPubCmd(`ECO:${state.eco ? 1 : 0}`); });
+  } else {
+    mqPubCmd(`ECO:${state.eco ? 1 : 0}`);
+  }
+}
+
+function onGuardToggle() {
+  lockUntil = Date.now() + 2500;
+  const g = document.getElementById('swGuard').checked ? 1 : 0;
+  if (!isCloudMode) fetch(`/api/set?guard=${g}`);
+  else mqPubCmd(`GRD:${g}`);
+}
+function onRoomToggle() {
+  lockUntil = Date.now() + 2500;
+  state.smart = document.getElementById('swRoom').checked;
+  if (!isCloudMode) fetch(`/api/set?smart=${state.smart ? 1 : 0}&rset=${state.roomSet}`);
+  else sendSettings();
+}
+function tapRoom(e, d) { e.preventDefault(); e.stopPropagation(); lastTouchMs = Date.now(); stepRoom(d, true); }
+function stepRoom(d, fromTouch) {
+  if (!fromTouch && (Date.now() - lastTouchMs < 450)) return;
+  lockUntil = Date.now() + 2500;
+  state.roomSet = Math.max(16.0, Math.min(28.0, Math.round((state.roomSet + d) * 2) / 2));
+  document.getElementById('mRoomSet').innerText = state.roomSet.toFixed(1) + ' °C';
+  clearTimeout(pendingTimer);
+  pendingTimer = setTimeout(() => {
+    if (!isCloudMode) fetch(`/api/set?rset=${state.roomSet}`);
+    else sendSettings();
+  }, 220);
+}
+
+function sendSettings() {
+  const eco = state.eco ? 1 : 0;
+  const sm = state.smart ? 1 : 0;
+  if (!isCloudMode) {
+    fetch(`/api/set?mode=${state.mode}&flow=${state.flowSet}&dhw=${state.dhwSet}&eco=${eco}&smart=${sm}&rset=${state.roomSet}`)
+      .catch(() => { isCloudMode = true; sendSettings(); });
+  } else {
+    mqPubCmd(`SET:${state.mode}:${state.flowSet}:${state.dhwSet}:${state.roomSet}:21.5:${sm}:${eco}`);
+  }
+}
+
+function resetBoiler() {
+  if (!confirm('Kombiye RESET komutu gönderilsin mi?')) return;
+  if (!isCloudMode) fetch('/api/reset');
+  else mqPubCmd('RESET');
+  closeAll();
+}
+function resetRuntime() {
+  if (!confirm('Sadece bugünkü GÜNLÜK sayaç sıfırlansın mı? (Geçmiş gün/ay/yıl korunur)')) return;
+  if (!isCloudMode) fetch('/api/reset_runtime').then(() => fetchStatus());
+  else mqPubCmd('RST_RUN');
+}
+function resetTotalGas() {
+  if (!confirm('YILLIK, aylık ve tüm doğalgaz takvim geçmişi tamamen sıfırlansın mı?')) return;
+  if (!isCloudMode) fetch('/api/reset_gas_total').then(() => fetchStatus());
+  else mqPubCmd('RST_TOT');
+}
+function cmdAction(url) {
+  if (!isCloudMode) fetch(url);
+  else mqPubCmd('POLL');
+}
+let srvTapCnt = 0, srvTapTimer = null;
+function tapServiceGate() {
+  srvTapCnt++;
+  clearTimeout(srvTapTimer);
+  if (srvTapCnt >= 3) {
+    srvTapCnt = 0;
+    closeAll();
+    document.getElementById('inSrvPin').value = '';
+    document.getElementById('srvAuthMsg').innerText = '';
+    openModal('mSrvAuth');
+    setTimeout(() => document.getElementById('inSrvPin').focus(), 150);
+  } else {
+    srvTapTimer = setTimeout(() => { srvTapCnt = 0; }, 1800);
+  }
+}
+function checkServicePin() {
+  const p = document.getElementById('inSrvPin').value.trim();
+  const msg = document.getElementById('srvAuthMsg');
+  if (!p) { msg.innerText = 'Lütfen şifre girin.'; return; }
+  if (isCloudMode) {
+    const exp = localStorage.getItem('torun_spin') || '2026';
+    if (p === exp) { closeAll(); openModal('mService'); }
+    else { msg.innerText = '❌ Hatalı servis şifresi!'; }
+    return;
+  }
+  fetch('/api/srv_auth?pin=' + encodeURIComponent(p))
+    .then(r => {
+      if (r.ok) { localStorage.setItem('torun_spin', p); closeAll(); openModal('mService'); }
+      else { msg.innerText = '❌ Hatalı servis şifresi!'; }
+    })
+    .catch(() => { msg.innerText = '❌ Doğrulama başarısız.'; });
+}
+function saveServicePin() {
+  const np = document.getElementById('inNewPin').value.trim();
+  const msg = document.getElementById('srvPinMsg');
+  if (np.length < 4) { msg.style.color = '#ef4444'; msg.innerText = 'En az 4 hane girin.'; return; }
+  localStorage.setItem('torun_spin', np);
+  if (isCloudMode) { msg.style.color = '#4ade80'; msg.innerText = 'Yerel kaydedildi (Cihaz için yerel ağda değiştirin).'; return; }
+  fetch('/api/srv_pin?pin=' + encodeURIComponent(np))
+    .then(r => r.text())
+    .then(t => { msg.style.color = '#4ade80'; msg.innerText = t; document.getElementById('inNewPin').value = ''; });
+}
+function runCompatWizard() {
+  const btn = document.getElementById('btnDiag');
+  const box = document.getElementById('diagBox');
+  if (isCloudMode) {
+    box.style.display = 'block';
+    box.style.borderColor = '#f59e0b';
+    box.innerHTML = '<b>⚠️ Yerel Bağlantı Gerekli</b><br>Kombi tarama asistanı cihazın kendi Wi-Fi ağı (<b>TORUN_AKILLI_KONTROL</b> veya <b>192.168.0.220</b>) üzerinden <b>internetsiz</b> çalışır.';
+    return;
+  }
+  btn.disabled = true;
+  btn.innerText = '⏳ Kombi taranıyor (3-5 sn)...';
+  box.style.display = 'block';
+  box.style.borderColor = '#38bdf8';
+  box.innerHTML = 'eBUS sinyali, anakart kimliği ve servis haritası test ediliyor...';
+  fetch('/api/diagnose')
+    .then(r => r.json())
+    .then(d => {
+      const col = d.level === 'green' ? '#22c55e' : (d.level === 'yellow' ? '#f59e0b' : '#ef4444');
+      box.style.borderColor = col;
+      box.innerHTML =
+        `<div style="font-weight:800;font-size:0.84rem;color:${col};margin-bottom:5px;">${d.title}</div>` +
+        `<div style="color:#cbd5e1;margin-bottom:8px;">${d.summary}</div>` +
+        `<div style="color:#94a3b8;font-size:0.72rem;border-top:1px solid rgba(148,163,184,0.15);padding-top:6px;">` +
+        `${d.busOk ? '✅' : '❌'} eBUS Hattı (${d.pol})<br>` +
+        `${d.idOk ? '✅' : '❌'} Kimlik: <b>${d.mfg}</b> • ${d.model} (SW:${d.sw} HW:${d.hw})<br>` +
+        `${d.stOk ? '✅' : '❌'} Canlı Okuma (B5 11) &nbsp;|&nbsp; ${d.ctrlOk ? '✅' : '❌'} Kontrol (B5 10)<br>` +
+        `${d.prof > 0 ? '✅' : '⚠️'} Harita: <b>${d.profName}</b><br>` +
+        `📊 ${d.vals}</div>`;
+      fetchStatus();
+    })
+    .catch(() => {
+      box.style.borderColor = '#ef4444';
+      box.innerHTML = '❌ Cihaza ulaşılamadı. Bağlantıyı kontrol edip tekrar deneyin.';
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.innerText = '🔎 Kombiyi Tara & Otomatik Ayarla';
+    });
+}
+function saveCloudKey() {
+  const k = document.getElementById('inCloudKey').value.trim();
+  localStorage.setItem('torun_ckey', k);
+  if (!isCloudMode) {
+    fetch(`/api/cloud_save?key=${encodeURIComponent(k)}`).then(r => r.text()).then(t => { document.getElementById('cloudMsg').innerText = t; });
+  } else {
+    document.getElementById('cloudMsg').innerText = 'Kaydedildi: ' + k;
+  }
+}
+function scanWifi() {
+  if (isCloudMode) { alert('Yalnızca yerel ağda taranabilir.'); return; }
+  const btn = document.getElementById('btnScan'); const list = document.getElementById('wifiList');
+  btn.innerText = '⏳ Taranıyor...'; list.innerHTML = '';
+  fetch('/api/wifi_scan').then(r => r.json()).then(arr => {
+    btn.innerText = '🔍 Wi-Fi Ağlarını Tara';
+    arr.forEach(net => {
+      const div = document.createElement('div'); div.className = 'wifi-item';
+      div.innerHTML = `<span><b>${net.ssid}</b></span><span style="color:#38bdf8;">${net.rssi} dBm</span>`;
+      div.onclick = () => { document.getElementById('inSsid').value = net.ssid; };
+      list.appendChild(div);
+    });
+  }).catch(() => { btn.innerText = '🔍 Wi-Fi Ağlarını Tara'; });
+}
+function saveWifi() {
+  const s = encodeURIComponent(document.getElementById('inSsid').value.trim());
+  const p = encodeURIComponent(document.getElementById('inPass').value);
+  if (!s) return;
+  fetch(`/api/wifi_save?ssid=${s}&pass=${p}`).then(r => r.text()).then(t => { document.getElementById('wifiMsg').innerText = t; });
+}
+
+function fmtTime() {
+  const n = new Date();
+  return n.toLocaleDateString('tr-TR') + ' ' + n.toLocaleTimeString('tr-TR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function fmtRun(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h} sa ${m} dk` : `${m} dk`;
+}
+
+// ===== iPHONE TAKVİM STİLİ DOĞALGAZ TÜKETİM TAKVİMİ (m³) =====
+const TR_MONS  = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const TR_SHORT = ['OCA','ŞUB','MAR','NİS','MAY','HAZ','TEM','AĞU','EYL','EKİ','KAS','ARA'];
+const TR_INI   = ['O','Ş','M','N','M','H','T','A','E','E','K','A'];
+let gasCalData = null, calTab = 'D', calViewOffset = 0, calSelDay = 0, gasPrice = 10.0;
+function fmtTL(m3) { return (m3 * gasPrice).toFixed(2) + ' ₺'; }
+function saveGasPrice() {
+  const raw = document.getElementById('inGasPrice').value.replace(',', '.').trim();
+  const v = parseFloat(raw);
+  const msg = document.getElementById('priceMsg');
+  if (isNaN(v) || v < 0.1 || v > 500) { msg.style.color = '#ef4444'; msg.innerText = 'Geçerli fiyat girin!'; return; }
+  gasPrice = v;
+  localStorage.setItem('torun_gprice', v.toFixed(2));
+  document.getElementById('inGasPrice').value = v.toFixed(2);
+  msg.style.color = '#4ade80'; msg.innerText = '✓ Kaydedildi';
+  setTimeout(() => { msg.innerText = ''; }, 2500);
+  if (!isCloudMode) fetch(`/api/set?gprice=${v.toFixed(2)}`).then(() => fetchStatus());
+  else mqPubCmd(`PRC:${v.toFixed(2)}`);
+  renderGasCal();
+}
+
+function openGasCal() {
+  closeAll();
+  calViewOffset = 0;
+  if (!gasCalData) {
+    try { const c = localStorage.getItem('torun_gcal'); if (c) gasCalData = JSON.parse(c); } catch(e){}
+  }
+  openModal('mGasCal');
+  renderGasCal();
+  if (!isCloudMode) {
+    fetch('/api/gas_cal').then(r => r.json()).then(d => {
+      gasCalData = d;
+      localStorage.setItem('torun_gcal', JSON.stringify(d));
+      renderGasCal();
+    }).catch(() => {});
+  } else {
+    mqPubCmd('GCAL');
+  }
+}
+function setCalTab(t) {
+  calTab = t; calViewOffset = 0;
+  ['D','M','Y'].forEach(k => document.getElementById('seg' + k).className = (k === t ? 'act' : ''));
+  renderGasCal();
+}
+function shiftCal(delta) {
+  if (calTab === 'D') calViewOffset = Math.max(-1, Math.min(0, calViewOffset + delta));
+  else if (calTab === 'M') calViewOffset = Math.max(-1, Math.min(0, calViewOffset + delta));
+  renderGasCal();
+}
+function selectCalDay(d) { calSelDay = d; renderGasCal(); }
+function jumpMonthToDaily(mIdx) {
+  if (!gasCalData) return;
+  if (calViewOffset === 0 && mIdx + 1 === gasCalData.m) { calTab = 'D'; calViewOffset = 0; setCalTab('D'); }
+  else if (calViewOffset === 0 && (gasCalData.y * 100 + mIdx + 1) === gasCalData.prevYM) {
+    calTab = 'D';
+    ['D','M','Y'].forEach(k => document.getElementById('seg' + k).className = (k === 'D' ? 'act' : ''));
+    calViewOffset = -1; calSelDay = 1; renderGasCal();
+  }
+}
+function renderGasCal() {
+  const el = document.getElementById('calBody');
+  if (!el) return;
+  const now = new Date();
+  const g = gasCalData || {
+    y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate(),
+    curYM: now.getFullYear() * 100 + (now.getMonth() + 1),
+    prevYM: now.getFullYear() * 100 + (now.getMonth() || 12),
+    pYear: now.getFullYear() - 1,
+    day: 0, mon: 0, yr: 0, tot: 0,
+    days: new Array(31).fill(0), pDays: new Array(31).fill(0),
+    mons: new Array(12).fill(0), pMons: new Array(12).fill(0)
+  };
+
+  if (calTab === 'D') {
+    const isPrev = (calViewOffset === -1);
+    const vYear = isPrev ? Math.floor(g.prevYM / 100) : g.y;
+    const vMon  = isPrev ? (g.prevYM % 100) : g.m;
+    const arr   = isPrev ? g.pDays : g.days;
+    const dim   = new Date(vYear, vMon, 0).getDate();
+    let firstWd = new Date(vYear, vMon - 1, 1).getDay();
+    firstWd = (firstWd === 0) ? 6 : (firstWd - 1); // Pazartesi = 0
+    if (!calSelDay || calSelDay > dim) calSelDay = isPrev ? 1 : g.d;
+    const maxV = Math.max(0.5, ...arr.slice(0, dim));
+    const monSum = arr.slice(0, dim).reduce((a, b) => a + b, 0);
+    const activeDays = arr.slice(0, dim).filter(v => v > 0.005).length || 1;
+
+    let h = `<div class="cal-nav">` +
+      `<button type="button" class="cal-nav-btn" onclick="shiftCal(-1)" ${isPrev ? 'style="opacity:0.35"' : ''}>‹</button>` +
+      `<div class="cal-nav-title">${TR_MONS[vMon - 1]} ${vYear}</div>` +
+      `<button type="button" class="cal-nav-btn" onclick="shiftCal(1)" ${!isPrev ? 'style="opacity:0.35"' : ''}>›</button>` +
+      `</div>` +
+      `<div class="cal-wd"><span>Pzt</span><span>Sal</span><span>Çar</span><span>Per</span><span>Cum</span><span>Cmt</span><span>Paz</span></div>` +
+      `<div class="cal-grid">`;
+    for (let e = 0; e < firstWd; e++) h += `<div class="cal-cell empty"></div>`;
+    for (let d = 1; d <= dim; d++) {
+      const v = arr[d - 1] || 0;
+      const isToday = (!isPrev && d === g.d);
+      const isSel   = (d === calSelDay);
+      const pct = Math.min(1, v / maxV);
+      const dotCol = v <= 0.005 ? '#1e293b' : (pct < 0.4 ? '#38bdf8' : (pct < 0.75 ? '#fbbf24' : '#f97316'));
+      h += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' sel' : ''}" onclick="selectCalDay(${d})">` +
+           `<div class="cal-num">${d}</div>` +
+           `<div class="cal-m3${v <= 0.005 ? ' zero' : ''}">${v > 0.005 ? v.toFixed(v < 10 ? 1 : 0) : '–'}</div>` +
+           `<div class="cal-dot" style="background:${dotCol}"></div></div>`;
+    }
+    h += `</div>`;
+    const selVal = arr[calSelDay - 1] || 0;
+    const share = monSum > 0.005 ? Math.round((selVal / monSum) * 100) : 0;
+    h += `<div class="cal-detail">` +
+      `<div><div style="font-size:0.72rem;color:#94a3b8;">Seçili Gün</div>` +
+      `<div style="font-size:0.95rem;font-weight:900;color:#f8fafc;">${calSelDay} ${TR_MONS[vMon - 1]} ${vYear}</div>` +
+      `<div style="font-size:0.68rem;color:#38bdf8;margin-top:2px;">Ay: <b>${monSum.toFixed(2)} m³</b> (${fmtTL(monSum)})</div></div>` +
+      `<div style="text-align:right;"><div style="font-size:1.2rem;font-weight:900;color:#fbbf24;">${selVal.toFixed(2)} <span style="font-size:0.7rem;">m³</span></div>` +
+      `<div style="font-size:0.82rem;font-weight:900;color:#4ade80;">${fmtTL(selVal)}</div>` +
+      `<div style="font-size:0.62rem;color:#94a3b8;">Ayın %${share}'i</div></div></div>`;
+    el.innerHTML = h;
+  } else if (calTab === 'M') {
+    const isPrev = (calViewOffset === -1);
+    const vYear  = isPrev ? g.pYear : g.y;
+    const arr    = isPrev ? g.pMons : g.mons;
+    const maxV   = Math.max(1.0, ...arr);
+    const yrSum  = arr.reduce((a, b) => a + b, 0);
+    let h = `<div class="cal-nav">` +
+      `<button type="button" class="cal-nav-btn" onclick="shiftCal(-1)" ${isPrev ? 'style="opacity:0.35"' : ''}>‹</button>` +
+      `<div class="cal-nav-title">${vYear} Aylık Tüketim</div>` +
+      `<button type="button" class="cal-nav-btn" onclick="shiftCal(1)" ${!isPrev ? 'style="opacity:0.35"' : ''}>›</button>` +
+      `</div><div class="mon-grid">`;
+    for (let i = 0; i < 12; i++) {
+      const v = arr[i] || 0;
+      const isCur = (!isPrev && i + 1 === g.m);
+      const w = v > 0.005 ? Math.max(8, Math.round((v / maxV) * 100)) : 0;
+      h += `<div class="mon-cell${isCur ? ' cur' : ''}" onclick="jumpMonthToDaily(${i})">` +
+           `<div class="mon-name">${TR_MONS[i]}</div>` +
+           `<div class="mon-val${v <= 0.005 ? ' zero' : ''}">${v.toFixed(2)} <span style="font-size:0.62rem;">m³</span></div>` +
+           `<div style="font-size:0.64rem;font-weight:800;color:${v > 0.005 ? '#4ade80' : '#475569'};margin-bottom:4px;">${fmtTL(v)}</div>` +
+           `<div class="mon-bar-bg"><div class="mon-bar-fg" style="width:${w}%"></div></div></div>`;
+    }
+    h += `</div><div class="cal-detail">` +
+      `<div><div style="font-size:0.74rem;color:#94a3b8;">${vYear} Yılı Toplamı</div>` +
+      `<div style="font-size:0.68rem;color:#38bdf8;margin-top:2px;">Detay için aya dokunun</div></div>` +
+      `<div style="text-align:right;"><div style="font-size:1.15rem;font-weight:900;color:#fbbf24;">${yrSum.toFixed(2)} <span style="font-size:0.72rem;">m³</span></div>` +
+      `<div style="font-size:0.86rem;font-weight:900;color:#4ade80;">${fmtTL(yrSum)}</div></div></div>`;
+    el.innerHTML = h;
+  } else {
+    const curSum  = g.mons.reduce((a, b) => a + b, 0);
+    const prevSum = g.pMons.reduce((a, b) => a + b, 0);
+    const maxV    = Math.max(1.0, ...g.mons);
+    let peakIdx = 0;
+    for (let i = 1; i < 12; i++) if (g.mons[i] > g.mons[peakIdx]) peakIdx = i;
+    const actMons = g.mons.filter(v => v > 0.005).length || 1;
+    let h = `<div class="cal-detail" style="margin-top:0;">` +
+      `<div><div style="font-size:0.74rem;color:#94a3b8;">${g.y} Yılı Doğalgaz</div>` +
+      `<div style="font-size:1.3rem;font-weight:900;color:#fbbf24;margin-top:2px;">${curSum.toFixed(2)} <span style="font-size:0.76rem;">m³</span></div>` +
+      `<div style="font-size:0.95rem;font-weight:900;color:#4ade80;">${fmtTL(curSum)}</div>` +
+      `<div style="font-size:0.66rem;color:#38bdf8;margin-top:3px;">Ort: <b>${(curSum / actMons).toFixed(2)} m³/ay</b> • Zirve: <b>${TR_MONS[peakIdx]}</b></div></div>` +
+      `<div style="text-align:right;"><div style="font-size:0.68rem;color:#94a3b8;">${g.pYear} Yılı</div>` +
+      `<div style="font-size:0.95rem;font-weight:800;color:#cbd5e1;">${prevSum.toFixed(2)} m³</div>` +
+      `<div style="font-size:0.74rem;font-weight:800;color:#4ade80;">${fmtTL(prevSum)}</div>` +
+      `<div style="font-size:0.62rem;color:#64748b;margin-top:4px;">Sayaç: ${g.tot.toFixed(2)} m³</div></div></div>` +
+      `<div class="yr-bars">`;
+    for (let i = 0; i < 12; i++) {
+      const v = g.mons[i] || 0;
+      const pct = v > 0.005 ? Math.max(8, Math.round((v / maxV) * 86)) : 0;
+      h += `<div class="yr-col"><div class="yr-val">${v > 0.05 ? v.toFixed(v < 10 ? 1 : 0) : ''}</div>` +
+           `<div class="yr-bar${v <= 0.005 ? ' zero' : ''}" style="height:${pct}%"></div>` +
+           `<div class="yr-lbl" style="${i + 1 === g.m ? 'color:#f87171;' : ''}">${TR_INI[i]}</div></div>`;
+    }
+    h += `</div>`;
+    el.innerHTML = h;
+  }
+}
+
+function applyUI(d, viaCloud) {
+  const nowLocked = Date.now() < lockUntil;
+  if (!nowLocked) {
+    state.mode = d.mode;
+    if (d.mode > 0) state.lastOnMode = d.mode;
+    state.flowSet = Math.round(d.flowSet);
+    state.dhwSet = Math.round(d.dhwSet);
+    state.eco = d.eco;
+    state.boost = !!d.boost;
+    state.manual = !!d.manual;
+    renderManualUI();
+    renderBoostUI(d.boostRem || 0);
+    document.getElementById('vFlowSet').innerText = state.flowSet;
+    document.getElementById('vDhwSet').innerText = state.dhwSet;
+    setArc('arcFlow', state.flowSet, 30, 72);
+    setArc('arcDhw', state.dhwSet, 35, 60);
+    document.getElementById('swEco').checked = state.eco;
+    document.getElementById('vEcoTxt').innerText = state.eco ? (d.ecoRest ? 'Pompa Dinleniyor' : `Aktif (${d.d00Kw || 9} kW)`) : 'Kapalı';
+    document.getElementById('vEcoTxt').style.color = state.eco ? '#4ade80' : '#8fa3bf';
+    state.smart = !!d.smart;
+    if (d.roomSet) state.roomSet = d.roomSet;
+    document.getElementById('swRoom').checked = state.smart;
+    if (d.guardEn !== undefined) document.getElementById('swGuard').checked = !!d.guardEn;
+    document.getElementById('mRoomSet').innerText = state.roomSet.toFixed(1) + ' °C';
+    renderPowerUI();
+  }
+
+  // Hero status
+  const sc = document.getElementById('stCircle');
+  const stT = document.getElementById('stTitle');
+  const stS = document.getElementById('stSub');
+  if (d.fault) {
+    sc.className = 'st-circle err';
+    stT.innerText = 'Kombi Arızalı';
+    stS.innerText = d.errCode + ' • ' + d.errTxt;
+  } else if (d.mode === 0) {
+    sc.className = 'st-circle off';
+    stT.innerText = 'Kombi Kapalı';
+    stS.innerText = 'Donma Koruması Aktif';
+  } else {
+    sc.className = 'st-circle';
+    const isDhwTap = !!d.dhwAct || [10, 11, 13, 14].includes(d.sCode);
+    stT.innerText = d.flame ? 'Kombi Yanıyor' : 'Kombi Hazır';
+    stS.innerText = isDhwTap ? '🚿 Sıcak Su Kullanılıyor' : (d.frostAct ? '🛡️ Donma Koruması (33°C)' : (d.guardAct ? '🛡️ Otonom Koruma Aktif' : (d.manual ? 'Manuel Mod (Kombi Paneli)' : (d.boost ? `🔥 Hızlı Isıtma (${d.boostRem || 45} dk)` : (d.mode === 1 ? 'Yaz Modu (Sıcak Su)' : (d.ecoRest ? '🌿 Tasarruf • Pompa Dinleniyor' : (d.eco ? 'Eco Tasarruf Çalışması' : 'Normal Çalışma')))))));
+  }
+
+  document.getElementById('svgLcd').textContent = (d.flow > 0 ? d.flow.toFixed(0) : state.flowSet) + '°';
+  document.getElementById('vFlame').innerText = d.flame ? 'Var' : 'Yok';
+  document.getElementById('vFlame').className = 'hm-val ' + (d.flame ? 'c-green' : 'c-muted');
+  document.getElementById('svgFlame').style.fill = d.flame ? '#f97316' : '#475569';
+  const modVal = d.flame ? (d.mod || 0) : 0;
+  const vModEl = document.getElementById('vMod');
+  vModEl.innerText = '%' + modVal;
+  const bars = modVal <= 0 ? 0 : (modVal <= 25 ? 1 : (modVal <= 50 ? 2 : (modVal <= 75 ? 3 : 4)));
+  const bCol = bars === 0 ? '#64748b' : (bars === 1 ? '#38bdf8' : (bars === 2 ? '#4ade80' : (bars === 3 ? '#fbbf24' : '#f97316')));
+  vModEl.style.color = bCol;
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('mb' + i);
+    if (el) el.setAttribute('fill', i <= bars ? bCol : '#334155');
+  }
+  const svgM = document.getElementById('svgMod');
+  if (svgM) svgM.style.filter = bars > 0 ? `drop-shadow(0 0 5px ${bCol})` : 'none';
+  document.getElementById('vPress').innerText = d.press.toFixed(1) + ' bar';
+  if (d.gasDay !== undefined) {
+    document.getElementById('vGasDay').innerText = d.gasDay.toFixed(2) + 'm³';
+    document.getElementById('mGasDay').innerText = d.gasDay.toFixed(3) + ' m³';
+    document.getElementById('mGasTot').innerText = (d.gasTot || 0).toFixed(2) + ' m³';
+    document.getElementById('mGasRate').innerText = `${(d.gasRate || 0).toFixed(2)} m³/sa (${(d.curKw || 0).toFixed(1)} kW)`;
+    document.getElementById('mD00').innerText = (d.d00Kw || 20) + ' kW';
+    if (d.gPrice && d.gPrice >= 0.1) {
+      gasPrice = d.gPrice;
+      const gpEl = document.getElementById('inGasPrice');
+      if (gpEl && document.activeElement !== gpEl) gpEl.value = gasPrice.toFixed(2);
+    }
+    const gm = (d.gasMon !== undefined) ? d.gasMon : d.gasDay;
+    const gy = (d.gasYr  !== undefined) ? d.gasYr  : (d.gasTot || d.gasDay);
+    const cd = document.getElementById('mCostDay'); if (cd) cd.innerText = fmtTL(d.gasDay);
+    const cm = document.getElementById('mCostMon'); if (cm) cm.innerText = fmtTL(gm);
+    const cy = document.getElementById('mCostYr');  if (cy) cy.innerText = fmtTL(gy);
+    const cs = document.getElementById('mCalCardSub');
+    if (cs) cs.innerText = `Gün: ${d.gasDay.toFixed(2)} • Ay: ${gm.toFixed(2)} • Yıl: ${gy.toFixed(2)} m³`;
+    if (d.calM >= 1 && d.calM <= 12) {
+      const bm = document.getElementById('calBadgeM'); if (bm) bm.innerText = TR_SHORT[d.calM - 1];
+      const bd = document.getElementById('calBadgeD'); if (bd) bd.innerText = d.calD;
+    }
+  }
+
+  document.getElementById('vFlowLive').innerText = d.flow > 0 ? ('Anlık ' + d.flow.toFixed(1) + '°C') : 'Beklemede';
+  const dhwLiveEl = document.getElementById('vDhwLive');
+  const isDhwOn = !!d.dhwAct || [10, 11, 13, 14].includes(d.sCode);
+  if (isDhwOn && d.dhw > 0) {
+    dhwLiveEl.innerText = '🚿 ' + d.dhw.toFixed(1) + '°C';
+    dhwLiveEl.style.color = '#fb923c';
+  } else if (d.dhw > 0) {
+    dhwLiveEl.innerText = 'Anlık ' + d.dhw.toFixed(1) + '°C';
+    dhwLiveEl.style.color = '#38bdf8';
+  } else {
+    dhwLiveEl.innerText = 'Hazır';
+    dhwLiveEl.style.color = '#38bdf8';
+  }
+
+  // Fault code in Settings modal
+  const ec = document.getElementById('vErrCode');
+  if (ec) ec.innerText = d.errCode;
+  document.getElementById('mErrCode').innerText = d.errCode;
+  document.getElementById('mErrDesc').innerText = d.errTxt;
+  document.getElementById('mStateCode').innerText = 'S.' + String(d.sCode || 0).padStart(2, '0');
+
+  // Settings & Service details
+  const mTxt = d.mode === 2 ? 'Kış Modu' : (d.mode === 1 ? 'Yaz Modu' : 'Kapalı');
+  document.getElementById('vModeSub').innerText = mTxt + (d.wValid ? ` • ${d.out.toFixed(0)}°C` : '');
+  document.getElementById('mCity').innerText = d.city;
+  document.getElementById('mOut').innerText = d.wValid ? (d.out.toFixed(1) + ' °C') : '-- °C';
+  document.getElementById('mFlowRet').innerText = `${d.flow.toFixed(1)} / ${d.ret.toFixed(1)} °C`;
+  document.getElementById('mBDes').innerText = d.bFlowDes > 0 ? (d.bFlowDes.toFixed(0) + ' °C') : '-- °C';
+  document.getElementById('mPump').innerText = d.pump ? 'AKTİF 💧' : 'DURUYOR';
+  document.getElementById('mRun').innerText = fmtRun(d.runSec);
+  if (d.roomOn) {
+    const batStr = (d.roomBat >= 0) ? ` • 🔋%${d.roomBat}` : '';
+    document.getElementById('mRoomSt').innerText = `🟢 Bağlı (${d.roomAge} sn önce)${batStr}`;
+    document.getElementById('mRoomSt').style.color = '#4ade80';
+    document.getElementById('mRoomVal').innerText = `${d.roomCur.toFixed(1)} °C / %${d.roomHum || 0}`;
+  } else {
+    document.getElementById('mRoomSt').innerText = 'Bekleniyor (Bağlı Değil)';
+    document.getElementById('mRoomSt').style.color = '#94a3b8';
+    document.getElementById('mRoomVal').innerText = '-- °C / --%';
+  }
+  if (d.mac) document.getElementById('mEspNow').innerText = `${d.mac} (CH ${d.ch})`;
+
+  document.getElementById('mSync').innerText = d.sync;
+  document.getElementById('mHits').innerText = d.slaveHits;
+  document.getElementById('mPol').innerText = `RX: ${d.rxInv ? 'TERS' : 'NORMAL'} | TX: ${d.txInv ? 'TERS' : 'NORMAL'}`;
+  document.getElementById('mIp').innerText = d.ip;
+  document.getElementById('mLog').innerText = d.log;
+  document.getElementById('mHex').innerText = d.hex;
+
+  const cOk = viaCloud || d.cloudOk;
+  if (d.ckey && document.activeElement !== document.getElementById('inCloudKey')) {
+    document.getElementById('inCloudKey').value = d.ckey;
+  }
+  document.getElementById('icCloud').setAttribute('class', cOk ? 'ic-ok' : 'ic-off');
+  document.getElementById('dotCloud').className = 'dot-live' + (cOk ? '' : ' off');
+  document.getElementById('vCloudTxt').innerText = viaCloud ? 'Bulut Tüneli' : (cOk ? 'Aktif' : 'Bekliyor');
+  document.getElementById('dotConn').className = 'dot-live';
+  document.getElementById('vConnTxt').innerText = viaCloud ? 'Bulut Çevrimiçi' : 'Çevrimiçi';
+  document.getElementById('vLastUpd').innerText = 'Son Güncelleme: ' + fmtTime();
+}
+
+let inFlight = false;
+function fetchStatus() {
+  if (isCloudMode) {
+    mqConnect();
+    return;
+  }
+  if (inFlight) return;
+  inFlight = true;
+  const ctrl = new AbortController();
+  const tm = setTimeout(() => ctrl.abort(), 1500);
+  fetch('/api/status', { signal: ctrl.signal })
+    .then(r => r.json())
+    .then(d => applyUI(d, false))
+    .catch(() => {
+      document.getElementById('dotConn').className = 'dot-live off';
+      document.getElementById('vConnTxt').innerText = 'Yeniden Bağlanıyor';
+    })
+    .finally(() => { clearTimeout(tm); inFlight = false; });
+}
+
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const b = document.getElementById('btnPwaInstall'); if (b) b.style.display = 'block'; });
+function installPwa() { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt.userChoice.finally(() => { deferredPrompt = null; }); }
+function savePin() { const p = document.getElementById('inPinSet').value.trim(); if (p.length !== 4) { document.getElementById('cloudMsg').innerText = '4 haneli PIN girin!'; return; } localStorage.setItem('kombi_pin', p); sessionStorage.setItem('kombi_unlocked', '1'); document.getElementById('cloudMsg').innerText = '🔒 PIN Kaydedildi!'; }
+function clearPin() { localStorage.removeItem('kombi_pin'); document.getElementById('inPinSet').value = ''; document.getElementById('cloudMsg').innerText = '🔓 PIN Kaldırıldı.'; }
+function unlockPin() { if (document.getElementById('pinInput').value.trim() === localStorage.getItem('kombi_pin')) { sessionStorage.setItem('kombi_unlocked', '1'); document.getElementById('pinOverlay').style.display = 'none'; } else { document.getElementById('pinErr').innerText = 'Hatalı PIN!'; document.getElementById('pinInput').value = ''; } }
+window.onload = () => {
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { navigator.serviceWorker.register('./sw.js').catch(() => {}); }
+  const savedPin = localStorage.getItem('kombi_pin');
+  if (savedPin && sessionStorage.getItem('kombi_unlocked') !== '1') { document.getElementById('pinOverlay').style.display = 'flex'; }
+  const savedK = localStorage.getItem('torun_ckey');
+  if (savedK) document.getElementById('inCloudKey').value = savedK;
+  setArc('arcFlow', 40, 30, 72);
+  setArc('arcDhw', 45, 35, 60);
+  try { const cached = localStorage.getItem('torun_last_state'); if (cached) applyUI(JSON.parse(cached), true); } catch(e){}
+  fetchStatus();
+  setInterval(fetchStatus, 900);
+};
+</script>
+</body>
+</html>
