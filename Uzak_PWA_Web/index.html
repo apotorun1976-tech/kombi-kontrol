@@ -342,6 +342,10 @@
     background: linear-gradient(135deg, #dc2626, #ea580c);
     border-color: #fca5a5; animation: micPulse 1.1s infinite;
   }
+  .mic-btn.hey-on {
+    background: linear-gradient(135deg, #15803d, #16a34a);
+    border-color: #86efac; box-shadow: 0 0 10px rgba(34,197,94,0.45);
+  }
   @keyframes micPulse {
     0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.65); }
     50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
@@ -387,8 +391,15 @@
 <!-- SESLİ KOMUT PANELİ -->
 <div class="voice-banner" id="voiceBanner">
   <div class="vb-top">
-    <span id="vbStatus">🎙️ Söyleyin: "Kombiyi aç", "Sıcaklığı 45 yap", "Sıcaklığı kıs"</span>
+    <span id="vbStatus">🎙️ "Hey Kombi" diyerek veya butona basarak komut verin</span>
     <button type="button" class="vb-close" onclick="closeVoiceBanner()">✕</button>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;padding:5px 8px;background:rgba(6,13,28,0.7);border-radius:9px;border:1px solid rgba(56,189,248,0.2);">
+    <span style="font-size:0.72rem;font-weight:800;color:#4ade80;">🗣️ "Hey Kombi" ile Otomatik Dinle</span>
+    <label class="sw sw-sm">
+      <input type="checkbox" id="swHeyKombi" checked onchange="onHeyKombiToggle()">
+      <span class="sw-track"></span>
+    </label>
   </div>
   <div class="vb-row">
     <input type="text" id="vbInput" placeholder="Konuşun veya klavye mikrofonuna 🎤 basın..." onkeydown="if(event.key==='Enter')runVoiceInput()">
@@ -944,7 +955,7 @@ function tapStep(e, kind, delta) {
 
 function stepTemp(kind, delta, fromTouch) {
   if (!fromTouch && (Date.now() - lastTouchMs < 450)) return;
-  lockUntil = Date.now() + 2500;
+  lockUntil = Date.now() + 4500;
   if (kind === 'flow') {
     const maxF = state.eco ? 50 : 72;
     state.flowSet = Math.max(30, Math.min(maxF, Math.round(state.flowSet + delta)));
@@ -956,7 +967,7 @@ function stepTemp(kind, delta, fromTouch) {
     setArc('arcDhw', state.dhwSet, 35, 60);
   }
   clearTimeout(pendingTimer);
-  pendingTimer = setTimeout(sendSettings, 220);
+  pendingTimer = setTimeout(sendSettings, 120);
 }
 
 function togglePower() {
@@ -1600,13 +1611,18 @@ function savePin() { const p = document.getElementById('inPinSet').value.trim();
 function clearPin() { localStorage.removeItem('kombi_pin'); document.getElementById('inPinSet').value = ''; document.getElementById('cloudMsg').innerText = '🔓 PIN Kaldırıldı.'; }
 function unlockPin() { if (document.getElementById('pinInput').value.trim() === localStorage.getItem('kombi_pin')) { sessionStorage.setItem('kombi_unlocked', '1'); document.getElementById('pinOverlay').style.display = 'none'; } else { document.getElementById('pinErr').innerText = 'Hatalı PIN!'; document.getElementById('pinInput').value = ''; } }
 
-// ==================== TÜRKÇE SESLİ KOMUT VE SESLİ YANIT SİSTEMİ ====================
+// ==================== TÜRKÇE SESLİ KOMUT VE "HEY KOMBİ" SİSTEMİ ====================
 let voiceRec = null;
 let isListening = false;
 let voiceAutoTimer = null;
+let heyKombiEnabled = true;
+let heyKombiAwakeUntil = 0;
+let ttsSpeakingUntil = 0;
+let manualOnceListening = false;
 
 function speakTR(msg) {
   try {
+    ttsSpeakingUntil = Date.now() + Math.max(2200, msg.length * 75);
     if (window.AndroidVoice && typeof window.AndroidVoice.speak === 'function') {
       window.AndroidVoice.speak(msg);
       return;
@@ -1619,6 +1635,7 @@ function speakTR(msg) {
     const voices = window.speechSynthesis.getVoices ? window.speechSynthesis.getVoices() : [];
     const trVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('tr'));
     if (trVoice) u.voice = trVoice;
+    u.onend = () => { ttsSpeakingUntil = Date.now() + 300; };
     window.speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -1775,20 +1792,186 @@ function processVoiceCommand(rawText) {
   }
 }
 
+function playWakeBeep() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ctx = new AC();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.07);
+    gain.gain.setValueAtTime(0.16, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+  } catch (e) {}
+}
+
+function handleVoiceTranscript(rawText, fromWakeLoop, isPartial) {
+  if (!rawText || !rawText.trim()) return;
+  if (fromWakeLoop && Date.now() < ttsSpeakingUntil) return;
+  const clean = rawText.trim();
+  const low = clean.toLocaleLowerCase('tr-TR');
+  const stEl = document.getElementById('vbStatus');
+  const banner = document.getElementById('voiceBanner');
+
+  // "Hey Kombi" / "Ey Kombi" / "He Kombi" / "Alo Kombi" uyandırma kelimesi kontrolü
+  const wakeMatch = low.match(/(?:^|\b)(?:hey|ey|he|hi|hay|alo)\s*kombi(?:m|niz|yi|ye)?\b[\s,.:;-]*(.*)$/i) ||
+                    low.match(/^kombi(?:m|niz)?\b[\s,.:;-]*(.*)$/i);
+
+  if (isPartial) {
+    if (wakeMatch) {
+      if (Date.now() > heyKombiAwakeUntil) playWakeBeep();
+      heyKombiAwakeUntil = Date.now() + 15000;
+      banner.classList.add('open');
+      stEl.innerHTML = `🟢 <b>"Hey Kombi"</b> aktif! Dinleniyor: <i>"${clean}"</i>`;
+      stEl.style.color = '#4ade80';
+    } else if (Date.now() < heyKombiAwakeUntil) {
+      stEl.innerHTML = `🟢 Dinleniyor: <i>"${clean}"</i>`;
+      stEl.style.color = '#4ade80';
+    }
+    return;
+  }
+
+  if (wakeMatch) {
+    const restCmd = (wakeMatch[1] || '').trim();
+    banner.classList.add('open');
+    if (!restCmd || /^(efendim|dinle|burada mısın|buradamısın|alo|beni dinle)$/i.test(restCmd)) {
+      // Mikrofonu KAPATMADAN sadece kısa onay sesi çal ve 15 sn boyunca komutu bekle!
+      playWakeBeep();
+      heyKombiAwakeUntil = Date.now() + 15000;
+      stEl.innerHTML = '🟢 <b>"Hey Kombi"</b> aktif! Mikrofon açık, komutunuzu söyleyin...';
+      stEl.style.color = '#4ade80';
+      return;
+    } else {
+      heyKombiAwakeUntil = Date.now() + 8000;
+      processVoiceCommand(restCmd);
+      return;
+    }
+  }
+
+  if (fromWakeLoop && !manualOnceListening) {
+    if (Date.now() < heyKombiAwakeUntil) {
+      heyKombiAwakeUntil = 0;
+      banner.classList.add('open');
+      processVoiceCommand(clean);
+    } else if (stEl && banner.classList.contains('open')) {
+      stEl.innerHTML = `👂 <i>"${clean}"</i> ("Hey Kombi" demeniz bekleniyor...)`;
+      stEl.style.color = '#94a3b8';
+    }
+    return;
+  }
+
+  manualOnceListening = false;
+  processVoiceCommand(clean);
+}
+
+function onHeyKombiToggle() {
+  heyKombiEnabled = document.getElementById('swHeyKombi').checked;
+  localStorage.setItem('torun_hey_kombi', heyKombiEnabled ? '1' : '0');
+  const btn = document.getElementById('btnMic');
+  const txt = document.getElementById('btnMicTxt');
+  const stEl = document.getElementById('vbStatus');
+
+  if (window.AndroidVoice && typeof window.AndroidVoice.setHeyKombi === 'function') {
+    window.AndroidVoice.setHeyKombi(heyKombiEnabled);
+    if (heyKombiEnabled) {
+      btn.classList.add('hey-on');
+      txt.innerText = 'Hey Kombi';
+      stEl.innerText = '🟢 "Hey Kombi" aktif! İstediğiniz zaman "Hey Kombi" diyebilirsiniz.';
+      stEl.style.color = '#4ade80';
+    } else {
+      btn.classList.remove('hey-on', 'listening');
+      txt.innerText = 'Sesli';
+      stEl.innerText = '🎙️ Otomatik dinleme kapatıldı.';
+      stEl.style.color = '#94a3b8';
+    }
+    return;
+  }
+
+  if (heyKombiEnabled) {
+    startWebWakeLoop();
+  } else {
+    if (voiceRec) { try { voiceRec.stop(); } catch (e) {} }
+    isListening = false;
+    btn.classList.remove('hey-on', 'listening');
+    txt.innerText = 'Sesli';
+    stEl.innerText = '🎙️ Otomatik dinleme kapatıldı.';
+    stEl.style.color = '#94a3b8';
+  }
+}
+
+function startWebWakeLoop() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const btn = document.getElementById('btnMic');
+  const txt = document.getElementById('btnMicTxt');
+  const stEl = document.getElementById('vbStatus');
+  if (!SR) return;
+  if (isListening) return;
+
+  try {
+    voiceRec = new SR();
+    voiceRec.lang = 'tr-TR';
+    voiceRec.continuous = true;
+    voiceRec.interimResults = true;
+    voiceRec.maxAlternatives = 1;
+
+    voiceRec.onstart = () => {
+      isListening = true;
+      btn.classList.add('hey-on');
+      txt.innerText = 'Hey Kombi';
+      if (stEl) {
+        stEl.innerText = '🟢 "Hey Kombi" dinlemede... ("Hey Kombi sıcaklığı 37 yap" deyin)';
+        stEl.style.color = '#4ade80';
+      }
+    };
+
+    voiceRec.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const transcript = ev.results[i][0].transcript;
+        if (ev.results[i].isFinal) {
+          handleVoiceTranscript(transcript, true, false);
+        } else {
+          handleVoiceTranscript(transcript, true, true);
+        }
+      }
+    };
+
+    voiceRec.onerror = (ev) => {
+      isListening = false;
+      if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')) {
+        heyKombiEnabled = false;
+        btn.classList.remove('hey-on', 'listening');
+        txt.innerText = 'Sesli';
+      }
+    };
+
+    voiceRec.onend = () => {
+      isListening = false;
+      if (heyKombiEnabled) {
+        setTimeout(() => { if (heyKombiEnabled && !isListening) startWebWakeLoop(); }, 450);
+      } else {
+        btn.classList.remove('hey-on', 'listening');
+        txt.innerText = 'Sesli';
+      }
+    };
+
+    voiceRec.start();
+  } catch (e) {}
+}
+
 function runVoiceInput() {
   const el = document.getElementById('vbInput');
   if (!el || !el.value.trim()) return;
-  processVoiceCommand(el.value);
+  handleVoiceTranscript(el.value, false);
 }
 
 function closeVoiceBanner() {
   document.getElementById('voiceBanner').classList.remove('open');
-  if (voiceRec && isListening) {
-    try { voiceRec.stop(); } catch (e) {}
-  }
-  isListening = false;
-  document.getElementById('btnMic').classList.remove('listening');
-  document.getElementById('btnMicTxt').innerText = 'Sesli';
 }
 
 function toggleVoiceCmd() {
@@ -1799,6 +1982,7 @@ function toggleVoiceCmd() {
   const inEl = document.getElementById('vbInput');
 
   banner.classList.add('open');
+  heyKombiAwakeUntil = Date.now() + 10000;
 
   if (window.AndroidVoice && typeof window.AndroidVoice.startListening === 'function') {
     btn.classList.add('listening');
@@ -1818,52 +2002,11 @@ function toggleVoiceCmd() {
     return;
   }
 
-  if (isListening && voiceRec) {
-    try { voiceRec.stop(); } catch (e) {}
-    isListening = false;
-    btn.classList.remove('listening');
-    txt.innerText = 'Sesli';
-    return;
-  }
-
-  try {
-    voiceRec = new SR();
-    voiceRec.lang = 'tr-TR';
-    voiceRec.interimResults = false;
-    voiceRec.maxAlternatives = 1;
-
-    voiceRec.onstart = () => {
-      isListening = true;
-      btn.classList.add('listening');
-      txt.innerText = 'Dinliyor...';
-      stEl.innerText = '🔴 Dinleniyor... ("Kombiyi aç", "Sıcaklığı 45 yap", "Sıcaklığı kıs")';
-      stEl.style.color = '#f87171';
-    };
-
-    voiceRec.onresult = (ev) => {
-      const transcript = ev.results[0][0].transcript;
-      processVoiceCommand(transcript);
-    };
-
-    voiceRec.onerror = () => {
-      isListening = false;
-      btn.classList.remove('listening');
-      txt.innerText = 'Sesli';
-      stEl.innerText = '🎙️ Aşağıdaki kutuya dokunup klavye mikrofonuyla 🎤 söyleyebilirsiniz:';
-      stEl.style.color = '#38bdf8';
-      inEl.value = '';
-      inEl.focus();
-    };
-
-    voiceRec.onend = () => {
-      isListening = false;
-      btn.classList.remove('listening');
-      txt.innerText = 'Sesli';
-    };
-
-    voiceRec.start();
-  } catch (e) {
-    inEl.focus();
+  manualOnceListening = true;
+  stEl.innerText = '🔴 Dinleniyor... ("Hey Kombi" veya doğrudan "Sıcaklığı 45 yap" deyin)';
+  stEl.style.color = '#f87171';
+  if (!isListening) {
+    startWebWakeLoop();
   }
 }
 
@@ -1891,6 +2034,13 @@ window.onload = () => {
   try { const cached = localStorage.getItem('torun_last_state'); if (cached) applyUI(JSON.parse(cached), true); } catch(e){}
   fetchStatus();
   setInterval(fetchStatus, 900);
+  const savedHey = localStorage.getItem('torun_hey_kombi');
+  heyKombiEnabled = (savedHey === null || savedHey === '1');
+  const swH = document.getElementById('swHeyKombi');
+  if (swH) swH.checked = heyKombiEnabled;
+  if (heyKombiEnabled) {
+    setTimeout(() => onHeyKombiToggle(), 700);
+  }
 };
 </script>
 </body>
