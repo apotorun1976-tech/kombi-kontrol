@@ -1810,6 +1810,16 @@
               ontouchend="tapRoom(event,0.5)" onclick="stepRoom(0.5)">+</button>
           </div>
         </div>
+        <!-- SIM800L GSM / SIM KART İNTERNETİ BİLGİ KARTI -->
+        <div style="margin-top:10px;padding:10px 11px;border-radius:12px;background:linear-gradient(145deg,rgba(15,23,42,0.92),rgba(12,38,71,0.65));border:1px solid rgba(56,189,248,0.28);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <b style="font-size:0.86rem;color:#38bdf8;">📶 SIM800L GSM &amp; SIM İnternet</b>
+            <span id="mGsmBadge" style="font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:99px;background:rgba(74,222,128,0.16);color:#4ade80;">Kontrol Ediliyor</span>
+          </div>
+          <div class="row-item" style="padding:4px 0;font-size:0.75rem;"><span>Operatör &amp; Çekim:</span><b id="mGsmOpSig" style="color:#f8fafc;">--</b></div>
+          <div class="row-item" style="padding:4px 0;font-size:0.75rem;"><span>IMEI Numarası:</span><b id="mGsmImei" style="font-family:monospace;color:#fbbf24;">--</b></div>
+          <div class="row-item" style="padding:4px 0;font-size:0.75rem;border-bottom:none;"><span>Modül Voltajı &amp; Bağlantı:</span><b id="mGsmVoltNet" style="color:#93c5fd;">--</b></div>
+        </div>
         <div
           style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(148,163,184,0.14);">
           <button class="btn" style="background:#0e4a6f;padding:10px 6px;font-size:0.78rem;"
@@ -2691,6 +2701,30 @@
       }
       if (d.mac) document.getElementById('mEspNow').innerText = `${d.mac} (CH ${d.ch})`;
 
+      const gBadge = document.getElementById('mGsmBadge');
+      if (gBadge) {
+        if (d.gsmGprs) {
+          gBadge.innerText = '🟢 GPRS Bulut Aktif';
+          gBadge.style.background = 'rgba(74,222,128,0.22)';
+          gBadge.style.color = '#4ade80';
+        } else if (d.gsmOk) {
+          gBadge.innerText = d.gsmNet ? '🟢 SIM Hazır (Yedek)' : '🟡 Şebeke Aranıyor';
+          gBadge.style.background = d.gsmNet ? 'rgba(56,189,248,0.18)' : 'rgba(251,191,36,0.18)';
+          gBadge.style.color = d.gsmNet ? '#38bdf8' : '#fbbf24';
+        } else {
+          gBadge.innerText = '🔴 Modül Yok';
+          gBadge.style.background = 'rgba(239,68,68,0.18)';
+          gBadge.style.color = '#f87171';
+        }
+        const csqPct = d.gsmCsq > 0 && d.gsmCsq <= 31 ? Math.min(100, Math.round((d.gsmCsq / 31) * 100)) : 0;
+        const opName = (d.gsmOp && d.gsmOp.length > 0) ? d.gsmOp : (d.gsmNet ? 'Şebeke Bağlı' : 'Operatör Yok');
+        document.getElementById('mGsmOpSig').innerText = `${opName} • %${csqPct} (CSQ:${d.gsmCsq || 0})`;
+        document.getElementById('mGsmImei').innerText = (d.gsmImei && d.gsmImei.length > 5) ? d.gsmImei : 'Okunuyor...';
+        const vVolt = d.gsmMv ? (d.gsmMv / 1000).toFixed(2) + ' V' : '-- V';
+        const viaTxt = d.netVia === 'GSM' ? '4.5G/GPRS Aktif' : (d.netVia === 'WIFI' ? 'Wi-Fi (GSM Yedekte)' : 'Beklemede');
+        document.getElementById('mGsmVoltNet').innerText = `${vVolt} • ${viaTxt}`;
+      }
+
       document.getElementById('mSync').innerText = d.sync;
       document.getElementById('mHits').innerText = d.slaveHits;
       document.getElementById('mPol').innerText = `RX: ${d.rxInv ? 'TERS' : 'NORMAL'} | TX: ${d.txInv ? 'TERS' : 'NORMAL'}`;
@@ -3023,7 +3057,7 @@
       }
 
       if (heyKombiEnabled) {
-        startWebWakeLoop();
+        startWebWakeLoop(true);
       } else {
         if (voiceRec) { try { voiceRec.stop(); } catch (e) { } }
         isListening = false;
@@ -3034,55 +3068,137 @@
       }
     }
 
-    function startWebWakeLoop() {
+    let lastInterimTranscript = '';
+    let interimSilenceTimer = null;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    function requestIosMicPermission() {
+      const stEl = document.getElementById('vbStatus');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then((stream) => {
+            stream.getTracks().forEach(t => t.stop());
+            if (stEl) {
+              stEl.innerHTML = '✅ <b>Mikrofon izni verildi!</b> Şimdi tekrar <b>🎙️ Sesli</b> butonuna basıp konuşun.';
+              stEl.style.color = '#4ade80';
+            }
+            setTimeout(() => startWebWakeLoop(true), 250);
+          })
+          .catch((err) => {
+            if (stEl) {
+              stEl.innerHTML = '⚠️ <b>Mikrofon İzni Engelli:</b> iPhone <b>Ayarlar → Safari → Mikrofon → İzin Ver</b> yapın (Ana ekrandan açtıysanız Safari\'den açın) veya aşağıdaki kutuya dokunup klavyedeki 🎤 mikrofona basın.';
+              stEl.style.color = '#fbbf24';
+            }
+          });
+      }
+    }
+
+    function startWebWakeLoop(fromUserTap) {
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       const btn = document.getElementById('btnMic');
       const txt = document.getElementById('btnMicTxt');
       const stEl = document.getElementById('vbStatus');
-      if (!SR) return;
-      if (isListening) return;
+      const inEl = document.getElementById('vbInput');
+
+      if (!SR) {
+        requestIosMicPermission();
+        if (stEl) {
+          stEl.innerHTML = '🎙️ Doğrudan ses tanıma bu görünümde kapalı; aşağıdaki kutuya dokunup iPhone klavyesindeki 🎤 mikrofona basarak konuşun:';
+          stEl.style.color = '#38bdf8';
+        }
+        if (inEl && fromUserTap) inEl.focus();
+        return;
+      }
+
+      if (voiceRec && isListening) {
+        try { voiceRec.abort(); } catch (e) { }
+        isListening = false;
+      }
 
       try {
+        lastInterimTranscript = '';
+        clearTimeout(interimSilenceTimer);
         voiceRec = new SR();
         voiceRec.lang = 'tr-TR';
-        voiceRec.continuous = true;
+        // iPhone iOS Safari'de continuous=true mikrofonun çalışmasını engeller; iOS'ta false olmalıdır!
+        voiceRec.continuous = isIOS ? false : !!heyKombiEnabled;
         voiceRec.interimResults = true;
         voiceRec.maxAlternatives = 1;
 
         voiceRec.onstart = () => {
           isListening = true;
-          if (btn) btn.classList.add('hey-on');
-          if (txt) txt.innerText = 'Hey Kombi';
-          if (stEl) {
-            stEl.innerText = '🟢 "Hey Kombi" dinlemede... ("Hey Kombi sıcaklığı 37 yap" deyin)';
-            stEl.style.color = '#4ade80';
+          if (manualOnceListening || isIOS) {
+            if (btn) { btn.classList.remove('hey-on'); btn.classList.add('listening'); }
+            if (txt) txt.innerText = 'Dinliyor...';
+            if (stEl) {
+              stEl.innerText = '🔴 Dinleniyor... Şimdi konuşun ("Kombiyi aç", "Sıcaklığı 37 yap", "Kaç derece?")';
+              stEl.style.color = '#f87171';
+            }
+          } else {
+            if (btn) btn.classList.add('hey-on');
+            if (txt) txt.innerText = 'Hey Kombi';
+            if (stEl) {
+              stEl.innerText = '🟢 "Hey Kombi" dinlemede... ("Hey Kombi sıcaklığı 37 yap" deyin)';
+              stEl.style.color = '#4ade80';
+            }
           }
         };
 
         voiceRec.onresult = (ev) => {
           for (let i = ev.resultIndex; i < ev.results.length; i++) {
-            const transcript = ev.results[i][0].transcript;
+            const transcript = (ev.results[i][0].transcript || '').trim();
+            if (!transcript) continue;
             if (ev.results[i].isFinal) {
-              handleVoiceTranscript(transcript, true, false);
+              lastInterimTranscript = '';
+              clearTimeout(interimSilenceTimer);
+              handleVoiceTranscript(transcript, !manualOnceListening && !isIOS, false);
             } else {
-              handleVoiceTranscript(transcript, true, true);
+              lastInterimTranscript = transcript;
+              handleVoiceTranscript(transcript, !manualOnceListening && !isIOS, true);
+              if (isIOS || manualOnceListening) {
+                clearTimeout(interimSilenceTimer);
+                interimSilenceTimer = setTimeout(() => {
+                  if (lastInterimTranscript) {
+                    const doneTxt = lastInterimTranscript;
+                    lastInterimTranscript = '';
+                    try { voiceRec.stop(); } catch (e) { }
+                    handleVoiceTranscript(doneTxt, false, false);
+                  }
+                }, 1350);
+              }
             }
           }
         };
 
         voiceRec.onerror = (ev) => {
           isListening = false;
-          if (ev && (ev.error === 'not-allowed' || ev.error === 'service-not-allowed')) {
+          clearTimeout(interimSilenceTimer);
+          const err = (ev && ev.error) ? ev.error : '';
+          if (err === 'not-allowed' || err === 'service-not-allowed') {
             heyKombiEnabled = false;
+            const swH = document.getElementById('swHeyKombi');
+            if (swH) swH.checked = false;
             if (btn) btn.classList.remove('hey-on', 'listening');
             if (txt) txt.innerText = 'Sesli';
+            // iPhone'da getUserMedia ile mikrofon izin penceresini tetikle!
+            requestIosMicPermission();
+            if (stEl) {
+              stEl.innerHTML = '⚠️ <b>iPhone Mikrofon / Dikte İzni:</b> İzin penceresi çıkmadıysa <button type="button" onclick="requestIosMicPermission()" style="background:#0284c7;color:#fff;border:none;border-radius:6px;padding:3px 7px;font-weight:800;cursor:pointer;">🔓 Mikrofon İzni İste</button> butonuna basın (veya iPhone Ayarlar → Genel → Klavye → Dikte\'yi açın / aşağıdaki kutuda klavye mikrofonunu 🎤 kullanın).';
+              stEl.style.color = '#fbbf24';
+            }
           }
         };
 
         voiceRec.onend = () => {
           isListening = false;
-          if (heyKombiEnabled) {
-            setTimeout(() => { if (heyKombiEnabled && !isListening) startWebWakeLoop(); }, 250);
+          clearTimeout(interimSilenceTimer);
+          if (lastInterimTranscript) {
+            const finalTxt = lastInterimTranscript;
+            lastInterimTranscript = '';
+            handleVoiceTranscript(finalTxt, !manualOnceListening && !isIOS, false);
+          }
+          if (heyKombiEnabled && !isIOS) {
+            setTimeout(() => { if (heyKombiEnabled && !isListening) startWebWakeLoop(false); }, 250);
           } else {
             if (btn) btn.classList.remove('hey-on', 'listening');
             if (txt) txt.innerText = 'Sesli';
@@ -3090,13 +3206,16 @@
         };
 
         voiceRec.start();
-      } catch (e) { }
+      } catch (e) {
+        requestIosMicPermission();
+        if (inEl && fromUserTap) inEl.focus();
+      }
     }
 
     function runVoiceInput() {
       const el = document.getElementById('vbInput');
       if (!el || !el.value.trim()) return;
-      handleVoiceTranscript(el.value, false);
+      handleVoiceTranscript(el.value, false, false);
     }
 
     function closeVoiceBanner() {
@@ -3111,32 +3230,24 @@
       const inEl = document.getElementById('vbInput');
 
       banner.classList.add('open');
-      heyKombiAwakeUntil = Date.now() + 10000;
+      heyKombiAwakeUntil = Date.now() + 15000;
 
       if (window.AndroidVoice && typeof window.AndroidVoice.startListening === 'function') {
         btn.classList.add('listening');
         txt.innerText = 'Dinliyor...';
-        stEl.innerText = '🔴 Dinleniyor... ("Kombiyi aç", "Sıcaklığı 45 yap", "Kaç derece?")';
+        stEl.innerText = '🔴 Dinleniyor... ("Kombiyi aç", "Sıcaklığı 37 yap", "Kaç derece?")';
         stEl.style.color = '#f87171';
         window.AndroidVoice.startListening();
         return;
       }
 
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        stEl.innerText = '🎙️ Klavyenizin mikrofon 🎤 tuşuna basıp komutunuzu söyleyin:';
-        stEl.style.color = '#38bdf8';
-        inEl.value = '';
-        inEl.focus();
+      if (isIOS && isListening && voiceRec) {
+        try { voiceRec.stop(); } catch (e) { }
         return;
       }
 
       manualOnceListening = true;
-      stEl.innerText = '🔴 Dinleniyor... ("Hey Kombi" veya doğrudan "Sıcaklığı 45 yap" deyin)';
-      stEl.style.color = '#f87171';
-      if (!isListening) {
-        startWebWakeLoop();
-      }
+      startWebWakeLoop(true);
     }
 
     document.addEventListener('input', (e) => {
